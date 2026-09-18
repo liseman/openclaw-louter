@@ -15,6 +15,7 @@ c=s.add_parser('panel');c.add_argument('aliases',nargs='+')
 c=s.add_parser('synthesizer');c.add_argument('alias');c.add_argument('--fallback')
 c=s.add_parser('prices');c.add_argument('input_per_million',type=float);c.add_argument('output_per_million',type=float)
 c=s.add_parser('timeout');c.add_argument('seconds',type=float)
+c=s.add_parser('fallback');c.add_argument('--route',default='local');g=c.add_mutually_exclusive_group();g.add_argument('--on',dest='enabled',action='store_true');g.add_argument('--off',dest='enabled',action='store_false');c.set_defaults(enabled=None)
 c=s.add_parser('reset-stats');c.add_argument('--confirm',action='store_true')
 args=p.parse_args()
 try:
@@ -46,6 +47,9 @@ try:
     elif args.command=='prices':
         cfg['estimates']['inputUsdPerMillion']=args.input_per_million;cfg['estimates']['outputUsdPerMillion']=args.output_per_million
     elif args.command=='timeout':cfg['auto']['timeoutMs']=round(args.seconds*1000)
+    elif args.command=='fallback':
+        cfg['fallback']['route']=args.route
+        if args.enabled is not None:cfg['fallback']['onRefusal']=args.enabled
     validate(cfg)
     entry=host_entry(cfg,old)
     allowed=entry['llm'].get('allowedCompletionModels',[])
