@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import sys as _louter_sys
+_louter_sys.dont_write_bytecode = True
 """Explicitly opt-in public GitHub savings reports. No telemetry from the reply hook."""
 import argparse
 import contextlib
