@@ -5,6 +5,8 @@ No OpenClaw state, API keys, or conversation files are read. This script does no
 install Louter or restart its services. Network writes happen only after consent.
 """
 from __future__ import annotations
+import sys as _louter_sys
+_louter_sys.dont_write_bytecode = True
 import argparse
 import hashlib
 import json

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import sys as _louter_sys
+_louter_sys.dont_write_bytecode = True
 """Short real-host tests. Quiet execution, exact session-correlated evidence, final summary."""
 import argparse, hashlib, json, os, signal, subprocess, sys, time, uuid
 from pathlib import Path

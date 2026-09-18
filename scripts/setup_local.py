@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import sys as _louter_sys
+_louter_sys.dont_write_bytecode = True
 """Reuse a loopback server, or provision a model through an existing Ollama install."""
 import argparse, json, os, shutil, subprocess, sys, time, urllib.request
 from pathlib import Path

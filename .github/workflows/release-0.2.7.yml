@@ -31,6 +31,7 @@ jobs:
           npm test
           python3 -B test/installer_test.py
           python3 -B test/telemetry_test.py
+          python3 -B test/no_bytecode_test.py
           node --input-type=module -e 'import fs from "node:fs"; import {VERSION} from "./src/config.js"; const p=JSON.parse(fs.readFileSync("package.json")); const m=JSON.parse(fs.readFileSync("openclaw.plugin.json")); if(p.version!==VERSION || p.version!==m.version) process.exit(1);'
       - name: Build and inspect artifact
         run: |

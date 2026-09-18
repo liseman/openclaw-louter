@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import sys as _louter_sys
+_louter_sys.dont_write_bytecode = True
 """Rebuild public totals from current, strictly validated GitHub issue snapshots."""
 import argparse
 import datetime as dt

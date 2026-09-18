@@ -1,6 +1,6 @@
 {
   "id": "louter",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "name": "Louter — Lite Router",
   "description": "Keep simple replies local. Choose a model explicitly. Ask your configured models in parallel and retain their full answers.",
   "activation": {
