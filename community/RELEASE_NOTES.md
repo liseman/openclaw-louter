@@ -1,15 +1,12 @@
-# Louter 0.2.10 — community dashboard release
+# Louter 0.2.11 — no-bytecode packaging hardening
 
-- Includes the opt-in, GitHub-only community savings reporting introduced in 0.2.9.
-- Deploys the richer community savings dashboard through GitHub Pages using the official Pages Actions flow.
-- Dashboard starts with an editable API-equivalent reference price of $4/M input tokens and $20/M output tokens; values stay in the visitor's browser and can be changed.
-- Public reporting remains OFF by default and requires explicit consent plus the participant's own GitHub login.
-- Reports contain aggregate allowlisted counters only—no prompts, answers, sessions, model names, local paths or provider credentials.
-- Estimates remain explicitly counterfactual/self-reported rather than verified or net cloud-bill savings.
-- Routing behavior is unchanged.
+- Fixes the concrete ClawHub 0.2.10 scan finding: `scripts/__pycache__/common.cpython-314.pyc` could be recreated after package extraction when Python entry points imported `common.py`.
+- The shell installer now exports `PYTHONDONTWRITEBYTECODE=1` and invokes Python with `-B`.
+- Packaged Python entry points set `sys.dont_write_bytecode = True` before importing sibling modules.
+- Adds a regression gate that builds the npm artifact, extracts it, runs packaged installer/setup/telemetry entry points, and fails if any `__pycache__`, `.pyc`, or `.pyo` appears afterward.
+- Existing prepack cleanup and artifact inventory checks remain in place.
+- Routing, opt-in telemetry consent, community dashboard, and pricing behavior are unchanged.
 
-Validation: JavaScript tests, telemetry/client/collector tests, installer regressions, CLI no-consent checks and packaged-artifact audit run before release.
+Validation includes the normal JavaScript, installer and telemetry suites plus the new post-extraction bytecode test.
 
-[Live savings dashboard](https://liseman.github.io/openclaw-louter/) · [Public source data](https://github.com/liseman/openclaw-louter/tree/community-stats) · [Opt-in instructions and privacy](https://github.com/liseman/openclaw-louter/blob/main/community/README.md)
-
-GitHub and ClawHub publication are separate registry operations.
+[Live savings dashboard](https://liseman.github.io/openclaw-louter/) · [Opt-in instructions and privacy](https://github.com/liseman/openclaw-louter/blob/main/community/README.md)
