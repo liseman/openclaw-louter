@@ -570,7 +570,7 @@
       }
     },
     "cache": {
-      "hit": false,
+      "hit": true,
       "key": "2026.9.4-c269d220fcec"
     }
   },
@@ -583,7 +583,7 @@
   },
   "fixtures": [
     {
-      "id": "openclaw-louter",
+      "id": "louter",
       "name": "Louter — Lite Router",
       "priority": "high",
       "seams": [
@@ -662,8 +662,8 @@
       "securityManifests": [],
       "package": {
         "path": "package.json",
-        "name": "openclaw-louter",
-        "version": "0.2.3",
+        "name": "@liseman/louter",
+        "version": "0.2.4",
         "type": "module",
         "main": null,
         "npmPack": {
@@ -714,8 +714,8 @@
       "packages": [
         {
           "path": "package.json",
-          "name": "openclaw-louter",
-          "version": "0.2.3",
+          "name": "@liseman/louter",
+          "version": "0.2.4",
           "type": "module",
           "main": null,
           "npmPack": {
@@ -780,8 +780,8 @@
   ],
   "issues": [
     {
-      "id": "CRABPOT-5338A642",
-      "fixture": "openclaw-louter",
+      "id": "CRABPOT-89A0F10E",
+      "fixture": "louter",
       "severity": "P2",
       "owner": "plugin",
       "code": "package-manifest-version-drift",
@@ -791,9 +791,9 @@
       "live": false,
       "deprecated": false,
       "compatStatus": "none",
-      "title": "openclaw-louter: package and manifest versions drift",
+      "title": "louter: package and manifest versions drift",
       "evidence": [
-        "package:0.2.3",
+        "package:0.2.4",
         "manifest:0.2.2"
       ],
       "compatRecord": null,
@@ -806,20 +806,20 @@
   ],
   "contractProbes": [
     {
-      "id": "package.metadata.version-alignment:openclaw-louter",
-      "fixture": "openclaw-louter",
+      "id": "package.metadata.version-alignment:louter",
+      "fixture": "louter",
       "priority": "P2",
       "target": "package-loader",
       "contract": "Package and OpenClaw manifest versions stay aligned for release compatibility reporting.",
       "evidence": [
-        "package:0.2.3",
+        "package:0.2.4",
         "manifest:0.2.2"
       ]
     }
   ],
   "logs": [
     {
-      "fixture": "openclaw-louter",
+      "fixture": "louter",
       "code": "seam-inventory",
       "level": "log",
       "message": "observed 3 hooks, 1 registrations, and 0 manifest contracts",
@@ -831,7 +831,7 @@
       ]
     },
     {
-      "fixture": "openclaw-louter",
+      "fixture": "louter",
       "code": "hook-names-present",
       "level": "log",
       "message": "all observed hooks exist in the target OpenClaw hook registry",
@@ -842,14 +842,14 @@
       ]
     },
     {
-      "fixture": "openclaw-louter",
+      "fixture": "louter",
       "code": "api-registrars-present",
       "level": "log",
       "message": "all observed api.register* calls exist in the target OpenClaw plugin API builder",
       "evidence": []
     },
     {
-      "fixture": "openclaw-louter",
+      "fixture": "louter",
       "code": "sdk-exports-present",
       "level": "log",
       "message": "all observed plugin SDK imports exist in target OpenClaw package exports",
@@ -858,14 +858,14 @@
       ]
     },
     {
-      "fixture": "openclaw-louter",
+      "fixture": "louter",
       "code": "package-metadata",
       "level": "log",
       "message": "selected package metadata for plugin contract checks",
       "evidence": [
         "package.json",
-        "openclaw-louter",
-        "version:0.2.3"
+        "@liseman/louter",
+        "version:0.2.4"
       ]
     }
   ],

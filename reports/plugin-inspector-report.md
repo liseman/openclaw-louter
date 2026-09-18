@@ -68,11 +68,11 @@ _none_
 
 ## Upstream Metadata Issues
 
-- P2 **openclaw-louter** `upstream-metadata` `plugin-upstream-fix`
-  - **package-manifest-version-drift**: openclaw-louter: package and manifest versions drift
+- P2 **louter** `upstream-metadata` `plugin-upstream-fix`
+  - **package-manifest-version-drift**: louter: package and manifest versions drift
   - state: open · compat:none
   - evidence:
-    - package:0.2.3
+    - package:0.2.4
     - manifest:0.2.2
   - author remediation:
     - Align the plugin version declared in package.json and openclaw.plugin.json.
@@ -93,7 +93,7 @@ _none_
 | Range eligibility version | 2026.9.4                                       |
 | Source                    | npm:openclaw                                   |
 | NPM dist-tag              | latest                                         |
-| Prepared cache            | miss                                           |
+| Prepared cache            | hit                                            |
 | Compat registry           | -                                              |
 | Compat records            | 0                                              |
 | Compat status counts      | -                                              |
@@ -112,9 +112,9 @@ _none_
 
 ## Warnings
 
-| Fixture         | Code                           | Level   | Message                                                          | Evidence                      | Compat record |
-| --------------- | ------------------------------ | ------- | ---------------------------------------------------------------- | ----------------------------- | ------------- |
-| openclaw-louter | package-manifest-version-drift | warning | package.json and openclaw.plugin.json publish different versions | package:0.2.3, manifest:0.2.2 | -             |
+| Fixture | Code                           | Level   | Message                                                          | Evidence                      | Compat record |
+| ------- | ------------------------------ | ------- | ---------------------------------------------------------------- | ----------------------------- | ------------- |
+| louter  | package-manifest-version-drift | warning | package.json and openclaw.plugin.json publish different versions | package:0.2.4, manifest:0.2.2 | -             |
 
 ## Suggestions To OpenClaw Compat Layer
 
@@ -122,11 +122,11 @@ _none_
 
 ## Issue Findings
 
-- P2 **openclaw-louter** `upstream-metadata` `plugin-upstream-fix`
-  - **package-manifest-version-drift**: openclaw-louter: package and manifest versions drift
+- P2 **louter** `upstream-metadata` `plugin-upstream-fix`
+  - **package-manifest-version-drift**: louter: package and manifest versions drift
   - state: open · compat:none
   - evidence:
-    - package:0.2.3
+    - package:0.2.4
     - manifest:0.2.2
   - author remediation:
     - Align the plugin version declared in package.json and openclaw.plugin.json.
@@ -134,18 +134,18 @@ _none_
 
 ## Contract Probe Backlog
 
-- P2 **openclaw-louter** `package-loader`
+- P2 **louter** `package-loader`
   - contract: Package and OpenClaw manifest versions stay aligned for release compatibility reporting.
-  - id: `package.metadata.version-alignment:openclaw-louter`
+  - id: `package.metadata.version-alignment:louter`
   - evidence:
-    - package:0.2.3
+    - package:0.2.4
     - manifest:0.2.2
 
 ## Fixture Seam Inventory
 
-| Fixture         | Priority | Seams          | Hooks                                           | Registrations     | Manifest contracts |
-| --------------- | -------- | -------------- | ----------------------------------------------- | ----------------- | ------------------ |
-| openclaw-louter | high     | plugin-runtime | before_agent_reply, gateway_start, gateway_stop | definePluginEntry | -                  |
+| Fixture | Priority | Seams          | Hooks                                           | Registrations     | Manifest contracts |
+| ------- | -------- | -------------- | ----------------------------------------------- | ----------------- | ------------------ |
+| louter  | high     | plugin-runtime | before_agent_reply, gateway_start, gateway_stop | definePluginEntry | -                  |
 
 ## Decision Matrix
 
@@ -153,10 +153,10 @@ _none_
 
 ## Raw Logs
 
-| Fixture         | Code                   | Level | Message                                                                          | Evidence                                                                                       | Compat record |
-| --------------- | ---------------------- | ----- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------- |
-| openclaw-louter | seam-inventory         | log   | observed 3 hooks, 1 registrations, and 0 manifest contracts                      | hook:before_agent_reply, hook:gateway_start, hook:gateway_stop, registration:definePluginEntry | -             |
-| openclaw-louter | hook-names-present     | log   | all observed hooks exist in the target OpenClaw hook registry                    | before_agent_reply, gateway_start, gateway_stop                                                | -             |
-| openclaw-louter | api-registrars-present | log   | all observed api.register* calls exist in the target OpenClaw plugin API builder | -                                                                                              | -             |
-| openclaw-louter | sdk-exports-present    | log   | all observed plugin SDK imports exist in target OpenClaw package exports         | openclaw/plugin-sdk/plugin-entry                                                               | -             |
-| openclaw-louter | package-metadata       | log   | selected package metadata for plugin contract checks                             | package.json, openclaw-louter, version:0.2.3                                                   | -             |
+| Fixture | Code                   | Level | Message                                                                          | Evidence                                                                                       | Compat record |
+| ------- | ---------------------- | ----- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------- |
+| louter  | seam-inventory         | log   | observed 3 hooks, 1 registrations, and 0 manifest contracts                      | hook:before_agent_reply, hook:gateway_start, hook:gateway_stop, registration:definePluginEntry | -             |
+| louter  | hook-names-present     | log   | all observed hooks exist in the target OpenClaw hook registry                    | before_agent_reply, gateway_start, gateway_stop                                                | -             |
+| louter  | api-registrars-present | log   | all observed api.register* calls exist in the target OpenClaw plugin API builder | -                                                                                              | -             |
+| louter  | sdk-exports-present    | log   | all observed plugin SDK imports exist in target OpenClaw package exports         | openclaw/plugin-sdk/plugin-entry                                                               | -             |
+| louter  | package-metadata       | log   | selected package metadata for plugin contract checks                             | package.json, @liseman/louter, version:0.2.4                                                   | -             |

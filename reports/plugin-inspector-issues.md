@@ -62,11 +62,11 @@ _none_
 
 ## Upstream Metadata Issues
 
-- P2 **openclaw-louter** `upstream-metadata` `plugin-upstream-fix`
-  - **package-manifest-version-drift**: openclaw-louter: package and manifest versions drift
+- P2 **louter** `upstream-metadata` `plugin-upstream-fix`
+  - **package-manifest-version-drift**: louter: package and manifest versions drift
   - state: open · compat:none
   - evidence:
-    - package:0.2.3
+    - package:0.2.4
     - manifest:0.2.2
   - author remediation:
     - Align the plugin version declared in package.json and openclaw.plugin.json.
@@ -74,11 +74,11 @@ _none_
 
 ## Issues
 
-- P2 **openclaw-louter** `upstream-metadata` `plugin-upstream-fix`
-  - **package-manifest-version-drift**: openclaw-louter: package and manifest versions drift
+- P2 **louter** `upstream-metadata` `plugin-upstream-fix`
+  - **package-manifest-version-drift**: louter: package and manifest versions drift
   - state: open · compat:none
   - evidence:
-    - package:0.2.3
+    - package:0.2.4
     - manifest:0.2.2
   - author remediation:
     - Align the plugin version declared in package.json and openclaw.plugin.json.
@@ -86,9 +86,9 @@ _none_
 
 ## Contract Probe Backlog
 
-- P2 **openclaw-louter** `package-loader`
+- P2 **louter** `package-loader`
   - contract: Package and OpenClaw manifest versions stay aligned for release compatibility reporting.
-  - id: `package.metadata.version-alignment:openclaw-louter`
+  - id: `package.metadata.version-alignment:louter`
   - evidence:
-    - package:0.2.3
+    - package:0.2.4
     - manifest:0.2.2
