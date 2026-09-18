@@ -1,5 +1,5 @@
 /** Louter configuration. No provider credentials are read here. */
-export const VERSION = '0.2.6';
+export const VERSION = '0.2.7';
 export const DEFAULTS = {
   agentIds: ['main'],
   routes: {
@@ -8,6 +8,7 @@ export const DEFAULTS = {
     claude: { kind: 'openclaw', model: 'anthropic/claude-opus-5', agentId: 'louter-claude', timeoutMs: 30000, maxTokens: 768, enabled: true }
   },
   auto: { enabled: true, localRoute: 'local', timeoutMs: 5000, maxTokens: 128, maxInputChars: 600, extraKeywords: [] },
+  fallback: { onRefusal: true, route: 'local' },
   askAround: { routes: ['local', 'astra', 'claude'], synthesizer: 'local', fallbackSynthesizer: 'astra', totalTimeoutMs: 45000, panelTimeoutMs: 20000, localPanelTimeoutMs: 12000, synthesisTimeoutMs: 10000, fallbackTimeoutMs: 12000, maxPanelTokens: 384, maxLocalPanelTokens: 96, maxSynthesisTokens: 320, maxQuestionChars: 12000, maxSynthesisChars: 24000 },
   storage: { retentionDays: 7, maxPanelsPerSession: 10, detailsPageChars: 10000 },
   estimates: { inputTokensPerAvoidedTurn: 15000, outputTokensPerAvoidedTurn: 150, inputUsdPerMillion: null, outputUsdPerMillion: null }
@@ -26,7 +27,7 @@ export function localUrl(value) {
 export function configFrom(input = {}) {
   if (!obj(input)) throw new Error('Louter config must be an object.');
   const cfg = structuredClone(DEFAULTS);
-  for (const key of ['auto', 'askAround', 'storage', 'estimates']) {
+  for (const key of ['auto', 'fallback', 'askAround', 'storage', 'estimates']) {
     if (input[key] !== undefined && !obj(input[key])) throw new Error(`${key} must be an object.`);
     Object.assign(cfg[key], input[key] || {});
   }
@@ -54,6 +55,8 @@ export function configFrom(input = {}) {
     if (!Number.isSafeInteger(r.maxTokens) || r.maxTokens < 1 || r.maxTokens > 8192) throw new Error(`Invalid maxTokens for ${alias}`);
   }
   if (cfg.auto.enabled && cfg.routes[cfg.auto.localRoute]?.kind !== 'local') throw new Error('auto.localRoute must name a local route.');
+  if (typeof cfg.fallback.onRefusal !== 'boolean') throw new Error('fallback.onRefusal must be boolean.');
+  if (typeof cfg.fallback.route !== 'string' || cfg.routes[cfg.fallback.route]?.kind !== 'local') throw new Error('fallback.route must name a local route.');
   for (const [key, val] of Object.entries(cfg.auto)) {
     if (['timeoutMs', 'maxTokens', 'maxInputChars'].includes(key) && (!Number.isSafeInteger(val) || val < 1 || val > 60000)) throw new Error(`Invalid auto.${key}`);
   }
