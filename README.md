@@ -34,8 +34,8 @@ Routine logs go into a private diagnostic directory. Failed tests are not declar
 | `What is a hexagon?` | Automatic local attempt, then main-agent fallback when needed. |
 | `Research the latest …` | Bypasses local inference and continues to the normal main agent. |
 | `local: Explain this sentence: …` | Local text completion only. Error/timeout does **not** ask a cloud model. |
-| `astra: Compare these two arguments: …` | One tool-free worker completion from the configured `astra` model. If the cloud model declines and refusal fallback is enabled, the original request is retried locally with a visible fallback notice. |
-| `claude: Review this paragraph: …` | One tool-free worker completion from the configured `claude` model, with the same disclosed local-refusal fallback behavior. |
+| `astra: Compare these two arguments: …` | One tool-free worker completion from the configured `astra` model. If the cloud execution fails with a configured fallback error, the original request is retried locally with a visible fallback notice. |
+| `claude: Review this paragraph: …` | One tool-free worker completion from the configured `claude` model, with the same disclosed cloud-failure fallback behavior. |
 | `ask around: Which approach is better, and why?` | Configured panel in parallel, local-first synthesis, optional configured synthesis fallback. |
 | `ask around --details claude: …` | Synthesis plus Claude's stored original response. |
 | `details claude` / `details all` | Full saved responses from the latest panel **in this conversation**, without a new model call. |
@@ -85,13 +85,13 @@ python3 ~/openclaw-louter/scripts/louterctl.py routes add small qwen3.5:2b \
 Louter uses `api.runtime.subagent.complete()` for configured cloud workers. The dedicated Claude worker keeps the canonical model ref `anthropic/claude-opus-5` and pins the model-scoped runtime to `claude-cli`; this lets the worker use Claude Code's own authenticated CLI backend rather than the direct Anthropic Messages transport. The gateway host must have the `claude` CLI installed, logged in, and visible on the gateway service PATH. Astra uses its configured OpenAI/Codex runtime.
 
 
-### Refusal fallback
+### Disclosed local fallback on cloud execution failures
 
-By default, an **explicit cloud route** that clearly declines the request can retry the **original, unmodified request** on the configured local route. Louter always tells the user that this happened; it never presents the local answer as if it came from the selected cloud model.
+By default, an **explicit cloud route** that fails to complete for one of the configured execution-error codes can retry the **original, unmodified request** on the configured local route. Louter always tells the user that this happened; it never presents the local answer as if it came from the selected cloud model.
 
-Structured refusal metadata is preferred when OpenClaw exposes it. A conservative text detector catches common explicit declines such as “I can’t help with that request.” Timeouts, authentication failures, outages, empty responses, and ordinary errors are **not** treated as refusals and do not trigger this fallback.
+The default fallback set covers execution failures such as timeouts, provider/request failures, output rejection and empty responses. Authentication failures are not in the default set. A cloud model's **content refusal remains the cloud model's answer and is never bypassed by local fallback**.
 
-For Ask Around, the refusing cloud model remains recorded as refused. If the configured local route is already in the panel, Louter reuses that local answer as a separately labeled fallback instead of making a duplicate request. The local fallback is not counted as the refusing model's vote.
+For Ask Around, the failed cloud model remains recorded as failed. If the configured local route is already in the panel, Louter reuses that local answer as a separately labeled fallback instead of making a duplicate request. The local fallback is not counted as the failed cloud model's vote.
 
 Configure it from the installed package:
 
