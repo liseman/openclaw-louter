@@ -1,4 +1,4 @@
-name: Release 0.2.7
+name: Release 0.2.8
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
         id: version
         run: |
           VERSION="$(node -p "require('./package.json').version")"
-          test "$VERSION" = "0.2.7"
+          test "$VERSION" = "0.2.8"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       - name: Create tag and GitHub release if missing
         env:
