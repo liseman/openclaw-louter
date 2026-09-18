@@ -33,6 +33,8 @@ jobs:
           python3 -B scripts/louterctl.py telemetry --state-dir "$RUNNER_TEMP/unused-profile" preview
           python3 -B scripts/louterctl.py telemetry --state-dir "$RUNNER_TEMP/unused-profile" send
           test ! -e "$RUNNER_TEMP/unused-profile"
+      - name: Extracted package creates no Python bytecode
+        run: python3 -B test/no_bytecode_test.py
       - name: Package artifact audit
         run: |
           TGZ="$(npm pack --silent | tail -1)"
