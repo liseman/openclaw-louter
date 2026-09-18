@@ -1,5 +1,5 @@
 /** Louter configuration. No provider credentials are read here. */
-export const VERSION = '0.2.2';
+export const VERSION = '0.2.3';
 export const DEFAULTS = {
   agentIds: ['main'],
   routes: {

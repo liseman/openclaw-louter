@@ -1,6 +1,6 @@
 {
   "name": "openclaw-louter",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Keep simple replies local. Choose a model explicitly. Ask your configured models in parallel and retain their full answers.",
   "type": "module",
   "license": "MIT",
@@ -10,7 +10,15 @@
   "openclaw": {
     "extensions": [
       "./index.js"
-    ]
+    ],
+    "compat": {
+      "pluginApi": ">=2026.9.4",
+      "minGatewayVersion": "2026.9.4"
+    },
+    "build": {
+      "openclawVersion": "2026.9.4",
+      "pluginSdkVersion": "2026.9.4"
+    }
   },
   "files": [
     "index.js",
