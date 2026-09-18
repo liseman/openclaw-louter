@@ -13,6 +13,8 @@ on:
 permissions:
   contents: write
   issues: read
+  pages: write
+  id-token: write
 concurrency:
   group: louter-community-savings
   cancel-in-progress: false
@@ -55,3 +57,19 @@ jobs:
           if git diff --cached --quiet; then exit 0; fi
           git commit --quiet -m 'Refresh opt-in community savings'
           git push origin HEAD:refs/heads/community-stats
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/community
+
+  deploy-pages:
+    needs: aggregate
+    if: github.repository == 'liseman/openclaw-louter'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
