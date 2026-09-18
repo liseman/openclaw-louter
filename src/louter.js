@@ -310,16 +310,32 @@ export function createRouter(api, options = {}) {
           const answer = await complete(name, command.prompt, ANSWER_SYSTEM, ctx, {
             timeoutMs: budget(local ? a.localPanelTimeoutMs : a.panelTimeoutMs), maxTokens: local ? a.maxLocalPanelTokens : a.maxPanelTokens, purpose: 'panel', signal
           });
-          if (answer.refused) {
-            const fallback = await refusalFallback(name, command.prompt, answer, ctx, {
-              timeoutMs: budget(a.localPanelTimeoutMs), signal
-            });
-            if (fallback) answer.fallback = fallback;
-          }
           panel.answers.push(answer);
         });
         await Promise.allSettled(jobs);
         panel.answers.sort((x, y) => names.indexOf(x.route) - names.indexOf(y.route));
+        // If the configured local fallback already participated in the panel,
+        // reuse that answer instead of making a duplicate local request. This
+        // preserves attribution and avoids local-server contention.
+        for (const refused of panel.answers.filter(r => r.refused)) {
+          const shared = panel.answers.find(r => r.route === cfg.fallback.route && r.status === 'ok');
+          if (shared) {
+            refused.fallback = { ...shared, sharedPanelAnswer: true };
+            await record(ctx, {
+              event: 'refusal_fallback',
+              refusedRoute: refused.route,
+              fallbackRoute: cfg.fallback.route,
+              status: 'ok',
+              sharedPanelAnswer: true,
+              refusalReason: refused.refusalReason || 'refused'
+            }, { refusalFallbacks: 1, refusalFallbackSuccesses: 1 });
+          } else {
+            const fallback = await refusalFallback(refused.route, command.prompt, refused, ctx, {
+              timeoutMs: budget(a.localPanelTimeoutMs), signal
+            });
+            if (fallback) refused.fallback = fallback;
+          }
+        }
         await store.savePanel(scope, panel);
         const good = panel.answers.filter(r => r.status === 'ok');
         const synthesisAnswers = [...good];
