@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import sys as _louter_sys
+_louter_sys.dont_write_bytecode = True
 """Friendly first-run setup: detect local/cloud availability and configure Louter routes."""
 import argparse, copy, json, re, shutil, subprocess, sys, urllib.request
 from pathlib import Path
