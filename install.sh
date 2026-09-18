@@ -12,4 +12,5 @@ for arg in "$@"; do
 done
 set -euo pipefail
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-exec python3 "$HERE/scripts/install.py" "$@"
+export PYTHONDONTWRITEBYTECODE=1
+exec python3 -B "$HERE/scripts/install.py" "$@"
