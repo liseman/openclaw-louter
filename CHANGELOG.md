@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.10 — 2026-09-18
+
+- Roll the post-0.2.9 GitHub Pages deployment and editable reference-price dashboard into a new immutable release.
+- Serve the generated community savings dashboard with GitHub's official Pages deployment actions.
+- Default the browser-only API-equivalent calculator to $4/M input and $20/M output while keeping both values editable.
+- Keep opt-in reporting, privacy boundaries and model routing behavior unchanged.
+
 ## 0.2.8 — 2026-09-18
 
 - Spell the default/example loopback inference endpoint as `localhost` instead of raw `127.0.0.1`; Louter still normalizes and restricts it to loopback at runtime.
