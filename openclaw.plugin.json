@@ -250,11 +250,19 @@
       "fallback": {
         "type": "object",
         "properties": {
-          "onRefusal": {
+          "onCloudError": {
             "type": "boolean"
           },
           "route": {
             "type": "string"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "uniqueItems": true
           }
         },
         "additionalProperties": false
