@@ -1,6 +1,6 @@
 {
   "name": "@liseman/openclaw-louter",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Keep simple replies local. Choose a model explicitly. Ask your configured models in parallel and retain their full answers.",
   "type": "module",
   "license": "MIT",
