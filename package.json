@@ -36,7 +36,8 @@
     "test": "node --test test/*.test.js",
     "test:smoke": "python3 scripts/smoke.py",
     "setup": "python3 scripts/setup_local.py",
-    "setup:quick": "python3 scripts/setup.py"
+    "setup:quick": "python3 scripts/setup.py",
+    "prepack": "python3 scripts/clean_package.py"
   },
   "keywords": [
     "openclaw",
