@@ -4,6 +4,8 @@ FAKE=r'''#!/usr/bin/env python3
 import os,json,sys
 from pathlib import Path
 p=Path(os.environ['MOCK_CFG']);d=json.loads(p.read_text());a=sys.argv[1:]
+if os.environ.get('MOCK_CALLS'):
+ with open(os.environ['MOCK_CALLS'],'a') as f:f.write(json.dumps(a)+'\n')
 def get(k):
  x=d
  for q in k.split('.'):
@@ -23,7 +25,11 @@ if a[:2]==['plugins','install']:
  put('plugins.entries.louter',{'enabled':True});print('Linked');sys.exit(0)
 if a[:2]==['plugins','enable']:put('plugins.entries.'+a[2]+'.enabled',True);print('Enabled');sys.exit(0)
 if a[:2]==['plugins','disable']:put('plugins.entries.'+a[2]+'.enabled',False);print('Disabled');sys.exit(0)
-if a[:2]==['plugins','inspect']:print('Status: enabled' if get('plugins.entries.'+a[2]+'.enabled') else 'Status: disabled');sys.exit(0)
+if a[:2]==['plugins','inspect']:
+ if a[2]=='louter' and os.environ.get('MOCK_CLAWHUB'):
+  print('Status: enabled\nTrust: reason=install-ledger; installSource="clawhub"\nInstall:\nSource: clawhub')
+ else:print('Status: enabled' if get('plugins.entries.'+a[2]+'.enabled') else 'Status: disabled')
+ sys.exit(0)
 if a[:2]==['plugins','doctor']:print('Diagnostics: mocked failure' if os.environ.get('MOCK_FAIL') else 'Plugin discovery, module loading, compatibility, and configuration checks passed.');sys.exit(0)
 print('Unknown mock command',a);sys.exit(1)
 '''
@@ -43,3 +49,19 @@ for should_fail in (False,True):
   assert state['plugins']['entries']['louter']['enabled']==(not should_fail)
   if not should_fail:assert state['plugins']['entries']['louter']['llm']['allowedCompletionModels']==['openai/gpt-6-astra','anthropic/claude-opus-5']
   print('PASS installer '+('rollback on diagnostics failure' if should_fail else 'new installation, permissions, preservation'))
+
+
+# A ClawHub-managed install must be configured in place, never converted to --link.
+with tempfile.TemporaryDirectory() as temp:
+ t=pathlib.Path(temp);bin=t/'bin';bin.mkdir();(bin/'openclaw').write_text(FAKE);(bin/'openclaw').chmod(0o755)
+ (bin/'systemctl').write_text('#!/bin/sh\nexit 0\n');(bin/'systemctl').chmod(0o755)
+ cfg=t/'config.json';cfg.write_text(json.dumps({'plugins':{'entries':{'louter':{'enabled':True}}}}))
+ calls=t/'calls.jsonl'
+ env={**os.environ,'PATH':str(bin)+':'+os.environ['PATH'],'MOCK_CFG':str(cfg),'MOCK_CALLS':str(calls),'MOCK_CLAWHUB':'1','OPENCLAW_STATE_DIR':str(t/'state')}
+ command=[sys.executable,'-c','import os,runpy,sys;os.geteuid=lambda:1000;sys.path.insert(0,sys.argv[1]);sys.argv=sys.argv[2:];runpy.run_path(sys.argv[0],run_name="__main__")',str(ROOT/'scripts'),str(ROOT/'scripts/install.py'),'--yes','--skip-smoke','--no-restart']
+ p=subprocess.run(command,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,env=env,timeout=45)
+ assert p.returncode==0,p.stdout
+ invoked=[json.loads(x) for x in calls.read_text().splitlines()]
+ assert not any(x[:2]==['plugins','install'] and '--link' in x for x in invoked),invoked
+ assert 'preserved existing ClawHub-managed installation' in p.stdout
+ print('PASS installer preserves ClawHub provenance')
