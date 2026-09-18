@@ -25,7 +25,7 @@ python3 scripts/setup.py
 
 For automation, `install.sh --yes` keeps the current/suggested route names and models and skips interactive approval prompts; it does not silently download a local model.
 
-Routine logs go into a private diagnostic directory. Failed tests are not declared successful just because a routing log appeared.
+When run from a ClawHub-managed install, the installer configures that package in place and preserves ClawHub provenance instead of converting it to a development `--link` install.\n\nRoutine logs go into a private diagnostic directory. Failed tests are not declared successful just because a routing log appeared.
 
 ## Messages
 
@@ -63,7 +63,7 @@ Only the named agents in `agentIds` are intercepted; initially that is `main`.
 
 Terminal administration does not require editing JavaScript. Run these from the installed package directory:
 
-```bashbash
+```bash
 python3 scripts/louterctl.py routes list
 python3 scripts/louterctl.py routes add reviewer anthropic/claude-opus-5
 python3 scripts/louterctl.py panel local astra reviewer
@@ -76,7 +76,7 @@ python3 scripts/louterctl.py timeout 5
 For a local Ollama route, use its native API so thinking and residency settings are explicit:
 
 ```bash
-python3 ~/openclaw-louter/scripts/louterctl.py routes add small qwen3.5:2b \
+python3 scripts/louterctl.py routes add small qwen3.5:2b \
   --local-endpoint http://127.0.0.1:11434/api/chat --protocol ollama --context 4096
 ```
 
@@ -153,7 +153,7 @@ The installer writes a targeted `rollback.py` path in its final summary. It does
 
 ## Verification status
 
-The 0.2.x routing architecture has passed the project's offline tests and live smoke/integration checks on OpenClaw 2026.9.4, including local Qwen, Astra, Claude, Ask Around, Details, main-agent handoff and Savings. 0.2.7 adds refusal fallback and first-run model discovery; run the bundled tests and smoke test after upgrading.
+The 0.2.x routing architecture has passed the project's offline tests and live smoke/integration checks on OpenClaw 2026.9.4, including local Qwen, Astra, Claude, Ask Around, Details, main-agent handoff and Savings. 0.2.7 adds disclosed cloud-failure fallback and first-run model discovery; run the bundled tests and smoke test after upgrading.
 
 ## References
 
