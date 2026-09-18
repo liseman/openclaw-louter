@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import sys as _louter_sys
+_louter_sys.dont_write_bytecode = True
 """Publish the reviewed Louter source using local CLI authentication.
 
 No OpenClaw state, API keys, or conversation files are read. This script does not
