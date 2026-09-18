@@ -1,7 +1,7 @@
 {
   "id": "louter",
-  "version": "0.2.6",
-  "name": "Louter \u2014 Lite Router",
+  "version": "0.2.7",
+  "name": "Louter — Lite Router",
   "description": "Keep simple replies local. Choose a model explicitly. Ask your configured models in parallel and retain their full answers.",
   "activation": {
     "onStartup": true
@@ -243,6 +243,26 @@
               "null"
             ],
             "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "fallback": {
+        "type": "object",
+        "properties": {
+          "onCloudError": {
+            "type": "boolean"
+          },
+          "route": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "uniqueItems": true
           }
         },
         "additionalProperties": false

@@ -65,5 +65,15 @@
     "outputTokensPerAvoidedTurn": 150,
     "inputUsdPerMillion": null,
     "outputUsdPerMillion": null
+  },
+  "fallback": {
+    "onCloudError": true,
+    "route": "local",
+    "errors": [
+      "timeout",
+      "request_failed",
+      "output-rejected",
+      "empty_response"
+    ]
   }
 }

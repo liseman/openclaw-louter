@@ -11,7 +11,7 @@ from common import ROOT, STATE, MISSING, defaults, get_config, host_entry, set_c
 
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--yes',action='store_true');p.add_argument('--skip-smoke',action='store_true');p.add_argument('--no-restart',action='store_true');p.add_argument('--destination',default=str(Path.home()/'openclaw-louter'))
+    p=argparse.ArgumentParser();p.add_argument('--yes',action='store_true');p.add_argument('--skip-smoke',action='store_true');p.add_argument('--no-restart',action='store_true');p.add_argument('--destination',default=str(ROOT),help='Plugin source path to register; defaults to the package being run')
     a=p.parse_args();os.umask(0o077)
     for tool in ['node','openclaw','systemctl']:
         if not shutil.which(tool):raise RuntimeError(f'{tool} is required. Run this installer on the Linux OpenClaw host, not on the Mac.')
@@ -50,15 +50,25 @@ def main():
         allow=snapshot.get('plugins.allow')
         if isinstance(allow,list) and allow and 'louter' not in allow:
             set_config('plugins.allow',allow+['louter'],log);changed=True
-        install=['openclaw','plugins','install','--link',str(dest),'--force']
-        helptext=run(['openclaw','plugins','install','--help'],log=log)
-        if '--accept-capabilities' in helptext:
-            run(install+['--accept-capabilities'],timeout=90,log=log)
+        # A ClawHub-managed package is already registered at ROOT. Do not
+        # convert it into a --link install: doing so discards managed provenance
+        # and makes clean installs look like development checkouts.
+        existing=''
+        try:existing=run(['openclaw','plugins','inspect','louter'],log=log)
+        except RuntimeError:pass
+        managed_clawhub=(dest==ROOT.resolve() and ('installSource="clawhub"' in existing or 'Source: clawhub' in existing))
+        if managed_clawhub:
+            summary.append(('PASS','Package provenance','preserved existing ClawHub-managed installation'))
         else:
-            # Do not hide a capability prompt in a log file; that caused earlier hangs.
-            print('OpenClaw install/consent output follows:',flush=True)
-            rc=subprocess.run(install,timeout=120).returncode
-            if rc:raise RuntimeError(f'Plugin installation failed (exit {rc}).')
+            install=['openclaw','plugins','install','--link',str(dest),'--force']
+            helptext=run(['openclaw','plugins','install','--help'],log=log)
+            if '--accept-capabilities' in helptext:
+                run(install+['--accept-capabilities'],timeout=90,log=log)
+            else:
+                # Do not hide a capability prompt in a log file; that caused earlier hangs.
+                print('OpenClaw install/consent output follows:',flush=True)
+                rc=subprocess.run(install,timeout=120).returncode
+                if rc:raise RuntimeError(f'Plugin installation failed (exit {rc}).')
         changed=True
         prior=snapshot.get('plugins.entries.louter') if isinstance(snapshot.get('plugins.entries.louter'),dict) else {}
         entry=host_entry(cfg,prior);entry['enabled']=False
@@ -67,6 +77,14 @@ def main():
         inspect=run(['openclaw','plugins','inspect','louter'],log=log)
         if 'Status: enabled' not in inspect:raise RuntimeError('Louter did not report enabled after installation.')
         summary.append(('PASS','Plugin registration','enabled with explicit LLM authorization'))
+        # Friendly first-run route/model discovery. This never installs a runtime;
+        # with an existing Ollama it can offer a verified Qwen download interactively.
+        setup_cmd=[sys.executable,str(ROOT/'scripts/setup.py')]
+        if a.yes: setup_cmd.append('--yes')
+        print('\nLouter route/model setup follows:',flush=True)
+        rc=subprocess.run(setup_cmd).returncode
+        if rc:raise RuntimeError(f'Louter route/model setup failed (exit {rc}).')
+        summary.append(('PASS','Route setup','local/cloud routes discovered and configured'))
         # Only now disable the earlier proof of concept; preserve files and settings.
         for plugin in ['fastpath-test','mode-switcher']:
             old=get_config('plugins.entries.'+plugin,None,log)

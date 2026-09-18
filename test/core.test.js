@@ -209,6 +209,89 @@ test('explicit errors count attempts but not completed cloud calls',async()=>{
   assert.equal(f.workerCalls.length,1);
   assert.equal(f.calls.length,0);
 });
+test('cloud timeout falls back to local with disclosure',async()=>{
+  const routes=structuredClone(DEFAULTS.routes);
+  routes.astra.timeoutMs=25;
+  const f=fixture({
+    config:{routes},
+    subagent:()=>new Promise(()=>{}),
+    local:async()=>response('LOCAL_FALLBACK_ANSWER')
+  });
+  const out=await f.handle({cleanedBody:'astra: explain something'},context());
+  assert.match(out.reply.text,/Fallback notice:/);
+  assert.match(out.reply.text,/astra could not complete/);
+  assert.match(out.reply.text,/local model/);
+  assert.match(out.reply.text,/LOCAL_FALLBACK_ANSWER/);
+  assert.equal(f.workerCalls.length,1);
+  assert.equal(f.locals(),1);
+});
+
+test('cloud failure fallback can be disabled',async()=>{
+  const routes=structuredClone(DEFAULTS.routes);
+  routes.astra.timeoutMs=25;
+  const f=fixture({
+    config:{routes,fallback:{onCloudError:false,route:'local',errors:['timeout']}},
+    subagent:()=>new Promise(()=>{}),
+    local:async()=>response('SHOULD_NOT_RUN')
+  });
+  const out=await f.handle({cleanedBody:'astra: hello'},context());
+  assert.match(out.reply.text,/no complete answer/);
+  assert.doesNotMatch(out.reply.text,/Fallback notice/);
+  assert.doesNotMatch(out.reply.text,/SHOULD_NOT_RUN/);
+  assert.equal(f.locals(),0);
+});
+
+test('cloud auth failure is not in the default fallback set',async()=>{
+  const f=fixture({subagent:async()=>{const e=new Error('unauthorized');e.code='auth_failed';throw e;}});
+  const out=await f.handle({cleanedBody:'claude: hello'},context());
+  assert.match(out.reply.text,/auth_failed/);
+  assert.doesNotMatch(out.reply.text,/Fallback notice/);
+  assert.equal(f.locals(),0);
+});
+
+test('cloud content refusal is preserved and never bypassed by local fallback',async()=>{
+  const f=fixture({
+    subagent:async()=>({text:"I can't help with that request."}),
+    local:async()=>response('SHOULD_NOT_RUN')
+  });
+  const out=await f.handle({cleanedBody:'astra: hello'},context());
+  assert.equal(out.reply.text,"I can't help with that request.");
+  assert.doesNotMatch(out.reply.text,/Fallback notice/);
+  assert.equal(f.locals(),0);
+});
+
+test('failed local fallback after cloud execution failure is disclosed',async()=>{
+  const f=fixture({
+    subagent:async()=>{const e=new Error('provider down');e.code='request_failed';throw e;},
+    local:async()=>{throw new Error('local down');}
+  });
+  const out=await f.handle({cleanedBody:'astra: hello'},context());
+  assert.match(out.reply.text,/could not complete this request/);
+  assert.match(out.reply.text,/attempted the configured local fallback/);
+  assert.equal(out.reply.isError,true);
+});
+
+test('Ask Around labels shared local fallback after cloud execution failure',async()=>{
+  const f=fixture({
+    local:async()=>response('LOCAL_PANEL_ANSWER'),
+    subagent:async req=>{
+      if(req.agentId==='louter-claude'){const e=new Error('provider down');e.code='request_failed';throw e;}
+      return {text:'ASTRA_PANEL_ANSWER'};
+    }
+  });
+  const out=await f.handle({cleanedBody:'ask around: test'},context());
+  assert.match(out.reply.text,/claude=error→local-fallback-ok/);
+  const panel=await f.store.panel(scopeKey(context()));
+  const claude=panel.answers.find(x=>x.route==='claude');
+  assert.equal(claude.status,'error');
+  assert.equal(claude.fallback.route,'local');
+  assert.equal(claude.fallback.text,'LOCAL_PANEL_ANSWER');
+  assert.equal(claude.fallback.sharedPanelAnswer,true);
+  const details=await f.handle({cleanedBody:'details claude'},context());
+  assert.match(details.reply.text,/Local fallback after claude failure/);
+  assert.match(details.reply.text,/LOCAL_PANEL_ANSWER/);
+});
+
 test('panel runs concurrently, preserves originals and uses local synthesis',async()=>{
   let active=0;
   let peak=0;

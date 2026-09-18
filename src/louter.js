@@ -13,7 +13,6 @@ const escape = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const scopedCalls = new AsyncLocalStorage();
 const emptyUsage = () => ({ inputTokens: 0, outputTokens: 0 });
 const isEscalation = s => /^\s*(?:`{1,3})?ESCALATE\b/i.test(s);
-
 export function parseCommand(text, cfg) {
   const body = String(text ?? '').trim();
   if (!body) return { type: 'empty' };
@@ -172,7 +171,7 @@ export function createRouter(api, options = {}) {
             signal
           }));
           outcome.actualModel = r.model;
-          return { ...j, stopReason: 'stop' };
+          return { ...j, stopReason: j?.stopReason || 'stop' };
         }
 
         // Compatibility path for explicitly configured routes without agentId.
@@ -212,6 +211,33 @@ export function createRouter(api, options = {}) {
   }
   const reply = (text, isError = false) => ({ handled: true, reply: { text, ...(isError ? { isError: true } : {}) } });
   const routeError = (alias, result) => `${alias}: no complete answer (${result.error || 'unavailable'}). ${cfg.routes[alias]?.kind === 'local' ? 'Louter did not call a cloud model for this request.' : 'No other model was substituted.'}`;
+  function shouldFailureFallback(alias, result) {
+    const route = cfg.routes[alias];
+    return route?.kind === 'openclaw' &&
+      cfg.fallback.onCloudError &&
+      result?.status !== 'ok' &&
+      cfg.fallback.errors.includes(String(result?.error || ''));
+  }
+  async function failureFallback(alias, prompt, result, ctx, options = {}) {
+    if (!shouldFailureFallback(alias, result)) return null;
+    const fallbackAlias = cfg.fallback.route;
+    const fallbackRoute = cfg.routes[fallbackAlias];
+    if (!fallbackRoute?.enabled || fallbackRoute.kind !== 'local') return null;
+    const fallback = await complete(fallbackAlias, prompt, ANSWER_SYSTEM, ctx, {
+      timeoutMs: Math.min(fallbackRoute.timeoutMs || 30000, options.timeoutMs || fallbackRoute.timeoutMs || 30000),
+      maxTokens: fallbackRoute.maxTokens,
+      purpose: 'cloud-failure-fallback',
+      signal: options.signal
+    });
+    await record(ctx, {
+      event: 'cloud_failure_fallback',
+      failedRoute: alias,
+      fallbackRoute: fallbackAlias,
+      status: fallback.status,
+      cloudError: result.error || 'unavailable'
+    }, { cloudFailureFallbacks: 1, cloudFailureFallbackSuccesses: fallback.status === 'ok' ? 1 : 0 });
+    return fallback;
+  }
   async function details(ctx, alias, panelId, page = 1) {
     const scope = scopeKey(ctx);
     if (!scope) return reply('Details are unavailable without a conversation identity.', true);
@@ -219,7 +245,7 @@ export function createRouter(api, options = {}) {
     if (!p) return reply('No retained Ask Around run in this conversation. Run ask around: first.', true);
     const rows = alias === 'all' ? p.answers : p.answers.filter(a => a.route === alias);
     if (!rows.length) return reply(`No ${alias} response in this panel. Available: ${p.answers.map(a => a.route).join(', ')}.`, true);
-    const text = rows.map(a => `=== ${a.route} | ${a.actualModel || a.model} | ${a.status} | ${(a.latencyMs / 1000).toFixed(2)}s ===\n${a.text || `No response: ${a.error}`}\n${a.status === 'partial' ? '[The provider output was truncated.]' : ''}`).join('\n\n');
+    const text = rows.map(a => `=== ${a.route} | ${a.actualModel || a.model} | ${a.status} | ${(a.latencyMs / 1000).toFixed(2)}s ===\n${a.text || `No response: ${a.error}`}\n${a.status === 'partial' ? '[The provider output was truncated.]' : ''}${a.fallback ? `\n\n--- Local fallback after ${a.route} failure (${a.fallback.route}, ${a.fallback.status}) ---\n${a.fallback.text || `No response: ${a.fallback.error}`}` : ''}`).join('\n\n');
     const pages = Math.max(1, Math.ceil(text.length / cfg.storage.detailsPageChars));
     if (!Number.isSafeInteger(page) || page < 1 || page > pages) return reply(`Page must be between 1 and ${pages}.`, true);
     return reply(`Ask Around ${p.id} — page ${page}/${pages}\n\n${text.slice((page - 1) * cfg.storage.detailsPageChars, page * cfg.storage.detailsPageChars)}${page < pages ? `\n\nNext: details ${alias} ${p.id} --page ${page + 1}` : ''}`);
@@ -236,6 +262,7 @@ export function createRouter(api, options = {}) {
       `Automatic main-agent handoffs: ${s.autoHandoffs || 0}`,
       `Local timeout/error handoffs: ${s.autoFailed || 0}`,
       `Cloud isolated calls attempted / completed: ${s.cloudAttempts || 0} / ${s.cloudSuccesses || 0}`,
+      `Disclosed local fallbacks after cloud failure: ${s.cloudFailureFallbacks || 0}; completed: ${s.cloudFailureFallbackSuccesses || 0}`,
       `Ask Around runs: ${s.panelRuns || 0}; cloud panel attempts: ${s.panelCloudAttempts || 0}; cloud synthesis attempts: ${s.synthesisCloudAttempts || 0}`,
       `Estimated avoided cloud tokens: ${s.avoidedInputEstimate || 0} input + ${s.avoidedOutputEstimate || 0} output`,
       `Gross avoided API-equivalent cost: ${dollars}`,
@@ -268,12 +295,39 @@ export function createRouter(api, options = {}) {
         });
         await Promise.allSettled(jobs);
         panel.answers.sort((x, y) => names.indexOf(x.route) - names.indexOf(y.route));
+        // For configured cloud execution failures, reuse the panel's local
+        // answer when possible instead of making a duplicate local request.
+        for (const failed of panel.answers.filter(r => shouldFailureFallback(r.route, r))) {
+          const shared = panel.answers.find(r => r.route === cfg.fallback.route && r.status === 'ok');
+          if (shared) {
+            failed.fallback = { ...shared, sharedPanelAnswer: true };
+            await record(ctx, {
+              event: 'cloud_failure_fallback',
+              failedRoute: failed.route,
+              fallbackRoute: cfg.fallback.route,
+              status: 'ok',
+              sharedPanelAnswer: true,
+              cloudError: failed.error || 'unavailable'
+            }, { cloudFailureFallbacks: 1, cloudFailureFallbackSuccesses: 1 });
+          } else {
+            const fallback = await failureFallback(failed.route, command.prompt, failed, ctx, {
+              timeoutMs: budget(a.localPanelTimeoutMs), signal
+            });
+            if (fallback) failed.fallback = fallback;
+          }
+        }
         await store.savePanel(scope, panel);
         const good = panel.answers.filter(r => r.status === 'ok');
-        if (!good.length) { panel.synthesis = 'No complete panel answers. Any partial output is retained in details all.'; return; }
-        if (good.length === 1) { panel.synthesis = `Only ${good[0].route} completed; this is not a multi-model synthesis.\n\n${good[0].text}`; panel.synthesisRoute = 'single-answer'; return; }
-        if (good.every(r => r.text === good[0].text)) { panel.synthesis = good[0].text + '\n\nAll completed responses were identical. Agreement does not verify correctness.'; panel.synthesisRoute = 'identical-responses'; return; }
-        const source = JSON.stringify({ question: command.prompt, responses: good.map(r => ({ alias: r.route, text: r.text })) });
+        const synthesisAnswers = [...good];
+        for (const failed of panel.answers.filter(r => r.fallback?.status === 'ok')) {
+          if (!synthesisAnswers.some(r => r.route === failed.fallback.route)) {
+            synthesisAnswers.push({ ...failed.fallback, route: `${failed.fallback.route} (fallback after ${failed.route} failure)` });
+          }
+        }
+        if (!synthesisAnswers.length) { panel.synthesis = 'No complete panel answers. Any partial or failed output is retained in details all.'; return; }
+        if (synthesisAnswers.length === 1) { panel.synthesis = `Only ${synthesisAnswers[0].route} completed; this is not a multi-model synthesis.\n\n${synthesisAnswers[0].text}`; panel.synthesisRoute = 'single-answer'; return; }
+        if (synthesisAnswers.every(r => r.text === synthesisAnswers[0].text)) { panel.synthesis = synthesisAnswers[0].text + '\n\nAll completed responses were identical. Agreement does not verify correctness.'; panel.synthesisRoute = 'identical-responses'; return; }
+        const source = JSON.stringify({ question: command.prompt, responses: synthesisAnswers.map(r => ({ alias: r.route, text: r.text })) });
         if (source.length > a.maxSynthesisChars) { panel.synthesis = 'Responses saved, but too long for the configured synthesis budget. Use details all; no responses were silently shortened.'; return; }
         const first = await complete(a.synthesizer, source, SYNTH_SYSTEM, ctx, { timeoutMs: budget(a.synthesisTimeoutMs), maxTokens: a.maxSynthesisTokens, purpose: 'synthesis', signal });
         if (first.status === 'ok' && !isEscalation(first.text)) { panel.synthesis = first.text; panel.synthesisRoute = a.synthesizer; return; }
@@ -287,7 +341,7 @@ export function createRouter(api, options = {}) {
     } catch (e) { panel.status = 'partial'; panel.synthesis ||= `Ask Around stopped (${codeOf(e)}). Completed responses are retained; use details all.`; }
     await store.savePanel(scope, panel);
     await record(ctx, { event: 'panel_end', panelId: panel.id, status: panel.status, completed: panel.answers.filter(x => x.status === 'ok').map(x => x.route), synthesisRoute: panel.synthesisRoute });
-    const namesLine = panel.answers.map(r => `${r.route}=${r.status} (${(r.latencyMs / 1000).toFixed(1)}s)`).join(' | ');
+    const namesLine = panel.answers.map(r => `${r.route}=${r.status}${r.fallback ? `→${r.fallback.route}-fallback-${r.fallback.status}` : ''} (${(r.latencyMs / 1000).toFixed(1)}s)`).join(' | ');
     const full = `Ask Around ${panel.id}\n\n${panel.synthesis}\n\nPanel: ${namesLine}\nSynthesis: ${panel.synthesisRoute || 'not completed'}\nText-only panel; no browsing, account access or tools.\nFull responses: details ${names[0]} | details all`;
     if (command.details) {
       const detail = await details(ctx, command.details, panel.id);
@@ -305,9 +359,9 @@ export function createRouter(api, options = {}) {
       switch (command.type) {
         case 'empty': return undefined;
         case 'ping': return reply(`LOUTER_OK ${VERSION}`);
-        case 'help': return reply('Louter — Lite Router\nlocal: <text> — local completion only\nastra: <text> / claude: <text> — tool-free worker completions\nask around: <question> — parallel configured panel + synthesis\nask around --details claude: <question>\ndetails <route|all> [run-id] [--page N]\nsavings [today|week|month|all]\nlouter routes / louter status\nNo prefix: automatic local fast path, otherwise your normal main agent with its tools/history.');
-        case 'routes': return reply(Object.entries(cfg.routes).map(([n, r]) => `${n}: ${r.kind} | ${r.model} | ${r.enabled ? 'enabled' : 'disabled'}`).join('\n') + `\nPanel: ${cfg.askAround.routes.join(', ')}\nEdit with: python3 ~/openclaw-louter/scripts/louterctl.py routes ...`);
-        case 'status': return reply(`Louter ${VERSION}\nAgents: ${cfg.agentIds.join(', ')}\nAuto local deadline: ${cfg.auto.timeoutMs}ms\nAsk Around deadline: ${cfg.askAround.totalTimeoutMs}ms\nWorker completion API: ${typeof api.runtime?.subagent?.complete === 'function' ? 'present (access tested on actual calls)' : 'missing'}\nPrefixes are current-message, text-only completions. Local privacy applies to Louter model requests, not the messaging channel or other OpenClaw plugins.`);
+        case 'help': return reply('Louter — Lite Router\nlocal: <text> — local completion only\nastra: <text> / claude: <text> — tool-free worker completions\nOn configured cloud execution failures, Louter can retry the original request locally and always discloses that fallback.\nask around: <question> — parallel configured panel + synthesis\nask around --details claude: <question>\ndetails <route|all> [run-id] [--page N]\nsavings [today|week|month|all]\nlouter routes / louter status\nNo prefix: automatic local fast path, otherwise your normal main agent with its tools/history.');
+        case 'routes': return reply(Object.entries(cfg.routes).map(([n, r]) => `${n}: ${r.kind} | ${r.model} | ${r.enabled ? 'enabled' : 'disabled'}`).join('\n') + `\nPanel: ${cfg.askAround.routes.join(', ')}\nCloud-failure fallback: ${cfg.fallback.onCloudError ? `on -> ${cfg.fallback.route}` : 'off'}\nEdit from the installed package with: python3 scripts/louterctl.py routes ...`);
+        case 'status': return reply(`Louter ${VERSION}\nAgents: ${cfg.agentIds.join(', ')}\nAuto local deadline: ${cfg.auto.timeoutMs}ms\nAsk Around deadline: ${cfg.askAround.totalTimeoutMs}ms\nCloud-failure fallback: ${cfg.fallback.onCloudError ? `on -> ${cfg.fallback.route} (always disclosed)` : 'off'}\nWorker completion API: ${typeof api.runtime?.subagent?.complete === 'function' ? 'present (access tested on actual calls)' : 'missing'}\nPrefixes are current-message, text-only completions. Local privacy applies to Louter model requests, not the messaging channel or other OpenClaw plugins.`);
         case 'savings': return reply(await savings(command.period));
         case 'details': return await details(ctx, command.alias, command.panelId, command.page);
         case 'unknown': return reply(`Unknown Louter route '${command.alias}'. No model was called. Use louter routes.`, true);
@@ -317,6 +371,13 @@ export function createRouter(api, options = {}) {
           if (!command.prompt) return reply(`Usage: ${command.alias}: <request>`, true);
           if (hasMedia(ctx)) return reply('Explicit Louter routes are text-only. Paste the needed text; attached media was not sent to a model.', true);
           const result = await complete(command.alias, command.prompt, ANSWER_SYSTEM, ctx);
+          if (shouldFailureFallback(command.alias, result)) {
+            const fallback = await failureFallback(command.alias, command.prompt, result, ctx);
+            if (fallback?.status === 'ok') {
+              return reply(`Fallback notice: ${command.alias} could not complete this request (${result.error || 'unavailable'}), so Louter retried the original request using the local route '${cfg.fallback.route}'. The answer below is from your local model.\n\n${fallback.text}`);
+            }
+            return reply(`${command.alias} could not complete this request (${result.error || 'unavailable'}). Louter attempted the configured local fallback '${cfg.fallback.route}', but it did not complete${fallback?.error ? ` (${fallback.error})` : ''}.`, true);
+          }
           if (result.status !== 'ok') return reply(routeError(command.alias, result) + (result.text ? '\n\nPartial response:\n' + result.text : ''), true);
           if (r.kind === 'local') await record(ctx, { event: 'route', outcome: 'LOCAL', alias: command.alias }, { forcedLocal: 1, avoidedInputEstimate: cfg.estimates.inputTokensPerAvoidedTurn, avoidedOutputEstimate: cfg.estimates.outputTokensPerAvoidedTurn });
           return reply(result.text);
