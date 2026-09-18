@@ -262,6 +262,7 @@ export function createRouter(api, options = {}) {
       `Automatic main-agent handoffs: ${s.autoHandoffs || 0}`,
       `Local timeout/error handoffs: ${s.autoFailed || 0}`,
       `Cloud isolated calls attempted / completed: ${s.cloudAttempts || 0} / ${s.cloudSuccesses || 0}`,
+      `Disclosed local fallbacks after cloud failure: ${s.cloudFailureFallbacks || 0}; completed: ${s.cloudFailureFallbackSuccesses || 0}`,
       `Ask Around runs: ${s.panelRuns || 0}; cloud panel attempts: ${s.panelCloudAttempts || 0}; cloud synthesis attempts: ${s.synthesisCloudAttempts || 0}`,
       `Estimated avoided cloud tokens: ${s.avoidedInputEstimate || 0} input + ${s.avoidedOutputEstimate || 0} output`,
       `Gross avoided API-equivalent cost: ${dollars}`,
@@ -323,7 +324,7 @@ export function createRouter(api, options = {}) {
             synthesisAnswers.push({ ...failed.fallback, route: `${failed.fallback.route} (fallback after ${failed.route} failure)` });
           }
         }
-        if (!synthesisAnswers.length) { panel.synthesis = 'No complete panel answers. Any partial or refused output is retained in details all.'; return; }
+        if (!synthesisAnswers.length) { panel.synthesis = 'No complete panel answers. Any partial or failed output is retained in details all.'; return; }
         if (synthesisAnswers.length === 1) { panel.synthesis = `Only ${synthesisAnswers[0].route} completed; this is not a multi-model synthesis.\n\n${synthesisAnswers[0].text}`; panel.synthesisRoute = 'single-answer'; return; }
         if (synthesisAnswers.every(r => r.text === synthesisAnswers[0].text)) { panel.synthesis = synthesisAnswers[0].text + '\n\nAll completed responses were identical. Agreement does not verify correctness.'; panel.synthesisRoute = 'identical-responses'; return; }
         const source = JSON.stringify({ question: command.prompt, responses: synthesisAnswers.map(r => ({ alias: r.route, text: r.text })) });
