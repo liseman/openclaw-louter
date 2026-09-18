@@ -1,9 +1,29 @@
 #!/usr/bin/env python3
 """Terminal-only route administration. Never exposes mutation commands to chat."""
 import argparse, copy, json, sys
+
+# Telemetry is terminal-only and deliberately independent of OpenClaw config.
+# Preview/status work even without OpenClaw, Node or GitHub authentication.
+_argv = sys.argv[1:]
+_preapproved = bool(_argv and _argv[0] == '--yes')
+if _preapproved:
+    _argv = _argv[1:]
+if _argv and _argv[0] == 'telemetry':
+    sys.dont_write_bytecode = True
+    from telemetry import main as telemetry_main
+    import subprocess
+    _args = _argv[1:]
+    if _preapproved and any(x in _args for x in ('on', 'withdraw')) and '--yes' not in _args:
+        _args = [*_args, '--yes']
+    try:
+        sys.exit(telemetry_main(_args))
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError, KeyboardInterrupt) as error:
+        print('TELEMETRY: FAILED —', str(error), file=sys.stderr)
+        sys.exit(1)
+
 from common import ROOT, STATE, defaults, get_config, host_entry, set_config, normalized, validate, run, diagnostic_dir
 
-p=argparse.ArgumentParser(description='Configure Louter without editing JavaScript.')
+p=argparse.ArgumentParser(description='Configure Louter without editing JavaScript. Public reporting: telemetry on/off/status/preview/send/withdraw.')
 p.add_argument('--yes',action='store_true',help='Approve the displayed configuration/model-permission changes')
 s=p.add_subparsers(dest='command',required=True)
 s.add_parser('show')

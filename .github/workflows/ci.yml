@@ -2,7 +2,11 @@ name: CI
 
 on:
   push:
+    branches-ignore: [community-stats]
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -21,6 +25,14 @@ jobs:
         run: python -m py_compile scripts/*.py
       - name: Installer tests
         run: python test/installer_test.py
+      - name: Opt-in telemetry and aggregation tests
+        run: python3 -B test/telemetry_test.py
+      - name: Telemetry CLI stays local before consent
+        run: |
+          python3 -B scripts/louterctl.py telemetry --state-dir "$RUNNER_TEMP/unused-profile" status
+          python3 -B scripts/louterctl.py telemetry --state-dir "$RUNNER_TEMP/unused-profile" preview
+          python3 -B scripts/louterctl.py telemetry --state-dir "$RUNNER_TEMP/unused-profile" send
+          test ! -e "$RUNNER_TEMP/unused-profile"
       - name: Package artifact audit
         run: |
           TGZ="$(npm pack --silent | tail -1)"
