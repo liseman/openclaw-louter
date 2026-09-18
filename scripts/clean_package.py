@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import sys as _louter_sys
+_louter_sys.dont_write_bytecode = True
 """Remove generated files that must never enter the published npm/ClawPack artifact."""
 from pathlib import Path
 import shutil
