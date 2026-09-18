@@ -6,7 +6,7 @@
     "local": {
       "kind": "local",
       "model": "qwen",
-      "endpoint": "http://127.0.0.1:18080/v1/chat/completions",
+      "endpoint": "http://localhost:18080/v1/chat/completions",
       "protocol": "openai",
       "contextTokens": 4096,
       "timeoutMs": 30000,
