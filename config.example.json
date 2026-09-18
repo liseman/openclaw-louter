@@ -65,5 +65,9 @@
     "outputTokensPerAvoidedTurn": 150,
     "inputUsdPerMillion": null,
     "outputUsdPerMillion": null
+  },
+  "fallback": {
+    "onRefusal": true,
+    "route": "local"
   }
 }
