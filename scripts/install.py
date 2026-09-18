@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+
+def package_version():
+    root = Path(__file__).resolve().parent.parent
+    return json.loads((root / "package.json").read_text())["version"]
+
 """Install the complete plugin without suppressing consent prompts or deleting old source."""
 import argparse, json, os, shutil, subprocess, sys, time, urllib.request
 from pathlib import Path
@@ -12,7 +17,7 @@ def main():
         if not shutil.which(tool):raise RuntimeError(f'{tool} is required. Run this installer on the Linux OpenClaw host, not on the Mac.')
     if sys.platform!='linux':raise RuntimeError('This installer targets your Linux systemd-user host. Source can be installed manually elsewhere.')
     if os.geteuid()==0:raise RuntimeError('Run as the OpenClaw user, not root/sudo.')
-    print('Louter 0.2.0 — complete installation\n')
+    print(f"Louter {package_version()} — complete installation\n")
     print('This installs local code, grants Louter conversation-hook access and narrowly scoped configured-model completions, and disables fastpath-test/mode-switcher only after Louter registers. It keeps your main model, credentials, Qwen service and old source files.')
     print('The optional smoke test makes short local/Astra/Claude calls. Full replies are stored per conversation, privately, with a seven-day retrieval window and periodic cleanup.')
     if not a.yes and input('\nProceed with those permissions and tests? [y/N] ').strip().lower()!='y':return 0

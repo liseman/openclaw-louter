@@ -1,4 +1,4 @@
-Louter 0.2.0 — release verification
+Louter 0.2.6 — release verification
 
 Node.js v22.16.0, Python 3.13.5, Linux packaging environment.
 

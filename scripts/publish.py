@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 WORK = ROOT / '.publish'
 OWNER = 'liseman'
 REPO = f'{OWNER}/openclaw-louter'
-VERSION = '0.2.0'
+VERSION = json.loads((Path(__file__).resolve().parent.parent / "package.json").read_text())["version"]
 TAG = f'v{VERSION}'
 PACKAGE = f'@{OWNER}/openclaw-louter'
 DESCRIPTION = 'Lite Router for OpenClaw: local-first replies, explicit model routes, multi-model Ask Around, and usage estimates.'
@@ -166,7 +166,7 @@ class Publisher:
             self.git('config','credential.https://github.com.helper','')
             self.git('config','--add','credential.https://github.com.helper','!gh auth git-credential')
             self.git('add','--',*files)
-            self.git('-c','commit.gpgsign=false','commit','-m','Release Louter 0.2.0 preview')
+            self.git('-c','commit.gpgsign=false','commit','-m',f'Release Louter {VERSION} preview')
         else:
             _, dirty = self.git('status','--porcelain')
             if dirty.strip():
@@ -228,7 +228,7 @@ class Publisher:
         if code:
             self.run(['gh','release','create',TAG,str(artifact),str(artifacts/'SHA256SUMS.txt'),
                       '--repo',REPO,'--verify-tag','--prerelease',
-                      '--title','Louter 0.2.0 — Lite Router for OpenClaw',
+                      '--title',f'Louter {VERSION} — Lite Router for OpenClaw',
                       '--notes-file',str(ROOT/'RELEASE_NOTES.md')],timeout=120)
             _, release = self.run(['gh','release','view',TAG,'--repo',REPO,'--json','url,isDraft,isPrerelease'])
         release = json.loads(release)

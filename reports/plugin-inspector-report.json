@@ -577,9 +577,9 @@
   "status": "pass",
   "summary": {
     "breakageCount": 0,
-    "warningCount": 1,
+    "warningCount": 0,
     "deprecationWarningCount": 0,
-    "issueCount": 1
+    "issueCount": 0
   },
   "fixtures": [
     {
@@ -642,7 +642,7 @@
           "path": "openclaw.plugin.json",
           "id": "louter",
           "name": "Louter — Lite Router",
-          "version": "0.2.2",
+          "version": "0.2.6",
           "keys": [
             "activation",
             "configSchema",
@@ -663,7 +663,7 @@
       "package": {
         "path": "package.json",
         "name": "@liseman/openclaw-louter",
-        "version": "0.2.5",
+        "version": "0.2.6",
         "type": "module",
         "main": null,
         "npmPack": {
@@ -715,7 +715,7 @@
         {
           "path": "package.json",
           "name": "@liseman/openclaw-louter",
-          "version": "0.2.5",
+          "version": "0.2.6",
           "type": "module",
           "main": null,
           "npmPack": {
@@ -778,45 +778,8 @@
       "sdkDeprecations": []
     }
   ],
-  "issues": [
-    {
-      "id": "CRABPOT-DE72BDA2",
-      "fixture": "openclaw-louter",
-      "severity": "P2",
-      "owner": "plugin",
-      "code": "package-manifest-version-drift",
-      "decision": "plugin-upstream-fix",
-      "status": "open",
-      "issueClass": "upstream-metadata",
-      "live": false,
-      "deprecated": false,
-      "compatStatus": "none",
-      "title": "openclaw-louter: package and manifest versions drift",
-      "evidence": [
-        "package:0.2.5",
-        "manifest:0.2.2"
-      ],
-      "compatRecord": null,
-      "runtimeCoverage": null,
-      "authorRemediation": {
-        "summary": "Align the plugin version declared in package.json and openclaw.plugin.json.",
-        "docsUrl": "https://docs.openclaw.ai/clawhub/plugin-validation-fixes#package-manifest-version-drift"
-      }
-    }
-  ],
-  "contractProbes": [
-    {
-      "id": "package.metadata.version-alignment:openclaw-louter",
-      "fixture": "openclaw-louter",
-      "priority": "P2",
-      "target": "package-loader",
-      "contract": "Package and OpenClaw manifest versions stay aligned for release compatibility reporting.",
-      "evidence": [
-        "package:0.2.5",
-        "manifest:0.2.2"
-      ]
-    }
-  ],
+  "issues": [],
+  "contractProbes": [],
   "logs": [
     {
       "fixture": "openclaw-louter",
@@ -865,7 +828,7 @@
       "evidence": [
         "package.json",
         "@liseman/openclaw-louter",
-        "version:0.2.5"
+        "version:0.2.6"
       ]
     }
   ],
