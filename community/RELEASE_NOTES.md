@@ -1,17 +1,15 @@
-# Louter 0.2.9 — opt-in GitHub-only community savings
+# Louter 0.2.10 — community dashboard release
 
-- Optional public aggregate reporting, OFF by default. Existing users are not opted in by an upgrade or install.sh --yes.
-- Public reports are tied to the sender's GitHub username; the consent prompt explicitly says this is not anonymous.
-- Preview, on, off, status, send and withdraw commands; daily profile-specific user timer or manual reporting.
-- Strict numeric allowlist: no prompts, answers, sessions, model names, local paths or provider credentials.
-- Durable cumulative checkpoints, retry deduplication, stats-reset handling and account-change checks.
-- GitHub Actions aggregates current reports roughly hourly onto a public community-stats branch, with a rendered README dashboard, JSON and an optional GitHub Pages-ready HTML dashboard.
-- No Cloudflare, external collector, shared publisher token or third-party analytics.
-- No assumed dollar prices: token totals and any gross API-equivalent estimate are explicitly counterfactual and self-reported, not verified net savings.
-- Routing implementation is unchanged.
+- Includes the opt-in, GitHub-only community savings reporting introduced in 0.2.9.
+- Deploys the richer community savings dashboard through GitHub Pages using the official Pages Actions flow.
+- Dashboard starts with an editable API-equivalent reference price of $4/M input tokens and $20/M output tokens; values stay in the visitor's browser and can be changed.
+- Public reporting remains OFF by default and requires explicit consent plus the participant's own GitHub login.
+- Reports contain aggregate allowlisted counters only—no prompts, answers, sessions, model names, local paths or provider credentials.
+- Estimates remain explicitly counterfactual/self-reported rather than verified or net cloud-bill savings.
+- Routing behavior is unchanged.
 
-Validation: 34 existing JavaScript tests, 37 telemetry/client/collector tests, installer regressions, CLI no-consent checks, and the packaged-artifact audit are included in CI. Real client reporting still requires each participant's explicit opt-in and working gh login.
+Validation: JavaScript tests, telemetry/client/collector tests, installer regressions, CLI no-consent checks and packaged-artifact audit run before release.
 
-[Public totals](https://github.com/liseman/openclaw-louter/tree/community-stats) · [Opt-in instructions and privacy](https://github.com/liseman/openclaw-louter/blob/main/community/README.md)
+[Live savings dashboard](https://liseman.github.io/openclaw-louter/) · [Public source data](https://github.com/liseman/openclaw-louter/tree/community-stats) · [Opt-in instructions and privacy](https://github.com/liseman/openclaw-louter/blob/main/community/README.md)
 
-This is a GitHub release. ClawHub publication is a separate registry operation.
+GitHub and ClawHub publication are separate registry operations.
