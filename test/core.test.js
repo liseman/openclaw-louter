@@ -223,6 +223,19 @@ test('explicit cloud refusal falls back to local with disclosure',async()=>{
   assert.equal(f.locals(),1);
 });
 
+test('refusal fallback can be disabled and does not silently switch models',async()=>{
+  const f=fixture({
+    config:{fallback:{onRefusal:false,route:'local'}},
+    subagent:async()=>({text:"I can’t help with that request."}),
+    local:async()=>response('SHOULD_NOT_RUN')
+  });
+  const out=await f.handle({cleanedBody:'astra: hello'},context());
+  assert.match(out.reply.text,/declined this request/);
+  assert.match(out.reply.text,/fallback is disabled/);
+  assert.doesNotMatch(out.reply.text,/SHOULD_NOT_RUN/);
+  assert.equal(f.locals(),0);
+});
+
 test('cloud timeout is not treated as a refusal and does not fall back local',async()=>{
   const routes=structuredClone(DEFAULTS.routes);
   routes.astra.timeoutMs=25;
