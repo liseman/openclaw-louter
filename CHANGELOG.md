@@ -15,3 +15,10 @@ Complete JavaScript package replacing interrupted experimental installer blocks.
 - Optional local-model provisioning through existing Ollama, with consent and smoke benchmarks.
 
 This is a preview pending live OpenClaw integration testing, not a ClawHub publication.
+
+## 0.2.2
+
+- Configure the dedicated Claude worker with model-scoped `agentRuntime.id: "claude-cli"`.
+- Keep Claude and Astra structurally identical inside Louter: both use `api.runtime.subagent.complete()` against dedicated configured worker agents.
+- Add upgrade-time Claude CLI presence check and live route verification.
+- Fix upgrader PATH discovery for non-interactive SSH shells.

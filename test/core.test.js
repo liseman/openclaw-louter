@@ -15,13 +15,70 @@ function memoryStore() {
 }
 const response = (text,finish='stop') => ({ choices:[{message:{content:text},finish_reason:finish}],usage:{prompt_tokens:25,completion_tokens:4} });
 function fixture(overrides={}) {
-  const calls=[],logs=[],store=overrides.store||memoryStore();
+  const calls=[],workerCalls=[],logs=[],store=overrides.store||memoryStore();
   const cfg=structuredClone(DEFAULTS);
-  if(overrides.config)for(const[k,v]of Object.entries(overrides.config))cfg[k]=['routes','agentIds'].includes(k)?v:{...cfg[k],...v};
-  const api={pluginConfig:cfg,runtime:{llm:{complete:async req=>{calls.push(req);if(overrides.cloud)return overrides.cloud(req);const i=req.model.indexOf('/');return{text:'CLOUD_OK',provider:req.model.slice(0,i),model:req.model.slice(i+1),usage:{inputTokens:20,outputTokens:5}};}}}};
+
+  if(overrides.config)
+    for(const[k,v]of Object.entries(overrides.config))
+      cfg[k]=['routes','agentIds'].includes(k)?v:{...cfg[k],...v};
+
+  const api={
+    pluginConfig:cfg,
+    runtime:{
+      llm:{
+        complete:async req=>{
+          calls.push(req);
+
+          if(overrides.cloud)
+            return overrides.cloud(req);
+
+          const i=req.model.indexOf('/');
+
+          return {
+            text:'CLOUD_OK',
+            provider:req.model.slice(0,i),
+            model:req.model.slice(i+1),
+            usage:{inputTokens:20,outputTokens:5}
+          };
+        }
+      },
+
+      subagent:{
+        complete:async req=>{
+          workerCalls.push(req);
+
+          if(overrides.subagent)
+            return overrides.subagent(req);
+
+          return {
+            text:'WORKER_OK'
+          };
+        }
+      }
+    }
+  };
+
   let locals=0;
-  const router=createRouter(api,{store,log:r=>logs.push(r),localPost:async(...args)=>{locals++;return overrides.local?overrides.local(...args):response('391');}});
-  return {...router,calls,logs,store,locals:()=>locals};
+
+  const router=createRouter(api,{
+    store,
+    log:r=>logs.push(r),
+    localPost:async(...args)=>{
+      locals++;
+      return overrides.local
+        ? overrides.local(...args)
+        : response('391');
+    }
+  });
+
+  return {
+    ...router,
+    calls,
+    workerCalls,
+    logs,
+    store,
+    locals:()=>locals
+  };
 }
 
 test('default config has 5-second automatic local deadline',()=>assert.equal(configFrom().auto.timeoutMs,5000));
@@ -78,25 +135,139 @@ test('automatic local success records estimates separately from token usage',asy
   const s=await f.store.totals();assert.equal(s.counts.autoLocal,1);assert.equal(s.counts.avoidedInputEstimate,15000);assert.equal(s.counts.localInputTokens,25);
 });
 test('Claude route invokes isolated host runtime once with exact model',async()=>{
-  const f=fixture();const out=await f.handle({cleanedBody:'claude: Explain briefly'},context());
-  assert.equal(out.reply.text,'CLOUD_OK');assert.equal(f.calls.length,1);const c=f.calls[0];
-  assert.equal(c.model,'anthropic/claude-opus-5');assert.equal(c.execution.mode,'isolated-agent-runtime');assert.equal(c.messages.length,1);assert.equal(c.messages[0].content,'Explain briefly');assert.ok(c.signal instanceof AbortSignal);
+  const f=fixture();
+
+  const out=await f.handle(
+    {cleanedBody:'claude: hello'},
+    context()
+  );
+
+  assert.equal(out.reply.text,'WORKER_OK');
+
+  assert.equal(f.workerCalls.length,1);
+  assert.equal(
+    f.workerCalls[0].agentId,
+    'louter-claude'
+  );
+
+  // Worker owns the model; Louter must not send a cross-model override.
+  assert.equal(f.workerCalls[0].model,undefined);
+
+  // Claude worker route must not touch compatibility llm.complete().
+  assert.equal(f.calls.length,0);
 });
 test('an unexpected actual model is rejected',async()=>{
-  const f=fixture({cloud:async()=>({text:'x',provider:'different',model:'model'})});
-  assert.match((await f.handle({cleanedBody:'claude: hi'},context())).reply.text,/model_mismatch/);
+  // Model-receipt validation belongs to the compatibility llm.complete()
+  // path. Production worker routes intentionally trust their configured
+  // worker agent and do not receive a provider/model receipt here.
+  const routes=structuredClone(DEFAULTS.routes);
+
+  routes.compat={
+    kind:'openclaw',
+    model:'openai/gpt-6-astra',
+    timeoutMs:30000,
+    maxTokens:768,
+    enabled:true
+  };
+
+  const f=fixture({
+    config:{routes},
+    cloud:async()=>({
+      text:'WRONG_MODEL',
+      provider:'anthropic',
+      model:'claude-opus-5'
+    })
+  });
+
+  const out=await f.handle(
+    {cleanedBody:'compat: hello'},
+    context()
+  );
+
+  assert.equal(out.handled,true);
+  assert.match(out.reply.text,/model_mismatch/);
+
+  assert.equal(f.calls.length,1);
+  assert.equal(f.workerCalls.length,0);
 });
 test('explicit errors count attempts but not completed cloud calls',async()=>{
-  const f=fixture({cloud:async()=>{throw new Error('secret');}});await f.handle({cleanedBody:'astra: hi'},context());
-  const s=await f.store.totals();assert.equal(s.counts.cloudAttempts,1);assert.equal(s.counts.cloudSuccesses,0);
+  const f=fixture({
+    subagent:async()=>{throw new Error('worker failed');}
+  });
+
+  const out=await f.handle(
+    {cleanedBody:'astra: hello'},
+    context()
+  );
+
+  assert.equal(out.handled,true);
+
+  const totals=await f.store.totals();
+  assert.equal(totals.counts.cloudAttempts,1);
+  assert.equal(totals.counts.cloudSuccesses||0,0);
+
+  assert.equal(f.workerCalls.length,1);
+  assert.equal(f.calls.length,0);
 });
 test('panel runs concurrently, preserves originals and uses local synthesis',async()=>{
-  let inFlight=0,peak=0;
-  const f=fixture({local:async(u,b)=>response(b.messages[0].content.startsWith('Synthesize')?'COMBINED':'LOCAL_ANSWER'),cloud:async req=>{inFlight++;peak=Math.max(peak,inFlight);await new Promise(r=>setTimeout(r,30));inFlight--;let i=req.model.indexOf('/');return{text:req.model,provider:req.model.slice(0,i),model:req.model.slice(i+1)};}});
-  const out=await f.handle({cleanedBody:'ask around: Which choice is better?'},context('panel'));
-  assert.equal(peak,2);assert.match(out.reply.text,/COMBINED/);assert.equal(f.calls.length,2);
-  const p=await f.store.panel(scopeKey(context('panel')));assert.equal(p.answers.length,3);assert.equal(p.synthesisRoute,'local');
-  const details=await f.handle({cleanedBody:'details claude'},context('panel'));assert.match(details.reply.text,/anthropic\/claude-opus-5/);assert.equal(f.calls.length,2);
+  let active=0;
+  let peak=0;
+
+  const f=fixture({
+    local:async(u,b)=>{
+      const prompt=b.messages?.[0]?.content || '';
+
+      if(prompt.startsWith('Synthesize'))
+        return response('SYNTHESIZED');
+
+      return response('LOCAL_ORIGINAL');
+    },
+
+    subagent:async req=>{
+      active++;
+      peak=Math.max(peak,active);
+
+      await new Promise(r=>setTimeout(r,20));
+
+      active--;
+
+      return {
+        text:req.agentId==='louter-astra'
+          ? 'ASTRA_ORIGINAL'
+          : 'CLAUDE_ORIGINAL'
+      };
+    }
+  });
+
+  const out=await f.handle(
+    {cleanedBody:'ask around: hi'},
+    context()
+  );
+
+  assert.equal(out.handled,true);
+  assert.equal(f.workerCalls.length,2);
+  assert.equal(f.calls.length,0);
+
+  // Both workers must overlap rather than execute serially.
+  assert.ok(peak>=2);
+
+  const panel=await f.store.panel(scopeKey(context()));
+
+  assert.equal(panel.answers.length,3);
+  assert.equal(
+    panel.answers.find(x=>x.route==='local').text,
+    'LOCAL_ORIGINAL'
+  );
+  assert.equal(
+    panel.answers.find(x=>x.route==='astra').text,
+    'ASTRA_ORIGINAL'
+  );
+  assert.equal(
+    panel.answers.find(x=>x.route==='claude').text,
+    'CLAUDE_ORIGINAL'
+  );
+
+  assert.match(out.reply.text,/SYNTHESIZED/);
 });
 test('panel details are not visible to another conversation',async()=>{
   const f=fixture();await f.handle({cleanedBody:'ask around: test'},context('one'));
@@ -106,20 +277,106 @@ test('details missing a session identity fail closed',async()=>{
   const f=fixture();const out=await f.handle({cleanedBody:'details all'},{agentId:'main'});assert.match(out.reply.text,/without a conversation identity/);
 });
 test('local synthesis failure uses only configured fallback',async()=>{
-  const f=fixture({local:async(u,b)=>response(b.messages[0].content.startsWith('Synthesize')?'ESCALATE':'LOCAL_ANSWER')});
-  await f.handle({cleanedBody:'ask around: choice?'},context());assert.equal(f.calls.length,3);assert.equal(f.calls[2].model,'openai/gpt-6-astra');
+  const f=fixture({
+    local:async(u,b)=>{
+      const prompt=b.messages?.[0]?.content || '';
+
+      return response(
+        prompt.startsWith('Synthesize')
+          ? 'ESCALATE'
+          : 'LOCAL_ANSWER'
+      );
+    },
+
+    subagent:async req=>({
+      text:req.agentId==='louter-astra'
+        ? 'ASTRA_ANSWER'
+        : 'CLAUDE_ANSWER'
+    })
+  });
+
+  await f.handle(
+    {cleanedBody:'ask around: choice?'},
+    context()
+  );
+
+  // Astra + Claude panel, then Astra fallback synthesis.
+  assert.equal(f.workerCalls.length,3);
+  assert.equal(f.workerCalls[0].agentId,'louter-astra');
+  assert.equal(f.workerCalls[1].agentId,'louter-claude');
+  assert.equal(f.workerCalls[2].agentId,'louter-astra');
+
+  assert.equal(f.calls.length,0);
 });
 test('one failed panel model is visible and does not discard successful answers',async()=>{
-  const f=fixture({cloud:async req=>{if(req.model.startsWith('anthropic'))throw new Error('noauth');return{text:'ASTRA_ANSWER',provider:'openai',model:'gpt-6-astra'};}});
-  const out=await f.handle({cleanedBody:'ask around: hi'},context());assert.match(out.reply.text,/claude=error/);assert.equal((await f.store.panel(scopeKey(context()))).answers.length,3);
+  const f=fixture({
+    subagent:async req=>{
+      if(req.agentId==='louter-claude')
+        throw new Error('noauth');
+
+      return {text:'ASTRA_ANSWER'};
+    }
+  });
+
+  const out=await f.handle(
+    {cleanedBody:'ask around: hi'},
+    context()
+  );
+
+  assert.match(out.reply.text,/claude=error/);
+
+  const panel=await f.store.panel(scopeKey(context()));
+
+  assert.equal(panel.answers.length,3);
+  assert.equal(
+    panel.answers.find(x=>x.route==='astra').status,
+    'ok'
+  );
+  assert.equal(
+    panel.answers.find(x=>x.route==='claude').status,
+    'error'
+  );
 });
 test('panel never waits indefinitely for a provider ignoring cancellation',async()=>{
-  const f=fixture({config:{askAround:{panelTimeoutMs:25,localPanelTimeoutMs:20,totalTimeoutMs:150,synthesisTimeoutMs:20,fallbackTimeoutMs:20}},cloud:()=>new Promise(()=>{})});
-  const start=Date.now();const out=await f.handle({cleanedBody:'ask around: hi'},context());assert.ok(Date.now()-start<600);assert.equal(out.handled,true);
+  const f=fixture({
+    config:{
+      askAround:{
+        panelTimeoutMs:25,
+        localPanelTimeoutMs:20,
+        totalTimeoutMs:150,
+        synthesisTimeoutMs:20,
+        fallbackTimeoutMs:20
+      }
+    },
+    subagent:()=>new Promise(()=>{})
+  });
+
+  const start=Date.now();
+
+  const out=await f.handle(
+    {cleanedBody:'ask around: hi'},
+    context()
+  );
+
+  assert.ok(Date.now()-start<600);
+  assert.equal(out.handled,true);
+  assert.equal(f.workerCalls.length,2);
 });
 test('identical panel responses require no extra synthesis model',async()=>{
-  const f=fixture({local:async()=>response('SAME'),cloud:async req=>{const i=req.model.indexOf('/');return{text:'SAME',provider:req.model.slice(0,i),model:req.model.slice(i+1)};}});
-  const out=await f.handle({cleanedBody:'ask around: hi'},context());assert.match(out.reply.text,/identical/);assert.equal(f.locals(),1);assert.equal(f.calls.length,2);
+  const f=fixture({
+    local:async()=>response('SAME'),
+    subagent:async()=>({text:'SAME'})
+  });
+
+  const out=await f.handle(
+    {cleanedBody:'ask around: hi'},
+    context()
+  );
+
+  assert.match(out.reply.text,/identical/i);
+  assert.equal(f.locals(),1);
+  assert.equal(f.workerCalls.length,2);
+  assert.equal(f.calls.length,0);
 });
 test('savings command invokes no model and does not invent a dollar rate',async()=>{
   const f=fixture();const out=await f.handle({cleanedBody:'savings'},context());assert.match(out.reply.text,/not configured/);assert.equal(f.calls.length+f.locals(),0);

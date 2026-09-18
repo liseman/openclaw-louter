@@ -155,6 +155,27 @@ export function createRouter(api, options = {}) {
             return { text: c?.message?.content, stopReason: c?.finish_reason, usage: j.usage };
           } finally { busyLocal.delete(r.endpoint); }
         }
+        // Prefer a configured worker agent. subagent.complete() is the public
+        // tool-free completion primitive for a configured agent that owns its
+        // model and credentials; no model override or retained session is used.
+        if (r.agentId) {
+          if (typeof api.runtime?.subagent?.complete !== 'function') {
+            const e = new Error('OpenClaw subagent completion API missing');
+            e.code = 'subagent_complete_missing';
+            throw e;
+          }
+          const j = await scopedCalls.run(true, () => api.runtime.subagent.complete({
+            agentId: r.agentId,
+            message: prompt,
+            extraSystemPrompt: system,
+            timeoutMs: ms,
+            signal
+          }));
+          outcome.actualModel = r.model;
+          return { ...j, stopReason: 'stop' };
+        }
+
+        // Compatibility path for explicitly configured routes without agentId.
         if (typeof api.runtime?.llm?.complete !== 'function') throw new Error('OpenClaw isolated completion API missing');
         const request = {
           messages: [{ role: 'user', content: prompt }], systemPrompt: system, model: r.model,
@@ -284,9 +305,9 @@ export function createRouter(api, options = {}) {
       switch (command.type) {
         case 'empty': return undefined;
         case 'ping': return reply(`LOUTER_OK ${VERSION}`);
-        case 'help': return reply('Louter — Lite Router\nlocal: <text> — local completion only\nastra: <text> / claude: <text> — isolated text completions\nask around: <question> — parallel configured panel + synthesis\nask around --details claude: <question>\ndetails <route|all> [run-id] [--page N]\nsavings [today|week|month|all]\nlouter routes / louter status\nNo prefix: automatic local fast path, otherwise your normal main agent with its tools/history.');
+        case 'help': return reply('Louter — Lite Router\nlocal: <text> — local completion only\nastra: <text> / claude: <text> — tool-free worker completions\nask around: <question> — parallel configured panel + synthesis\nask around --details claude: <question>\ndetails <route|all> [run-id] [--page N]\nsavings [today|week|month|all]\nlouter routes / louter status\nNo prefix: automatic local fast path, otherwise your normal main agent with its tools/history.');
         case 'routes': return reply(Object.entries(cfg.routes).map(([n, r]) => `${n}: ${r.kind} | ${r.model} | ${r.enabled ? 'enabled' : 'disabled'}`).join('\n') + `\nPanel: ${cfg.askAround.routes.join(', ')}\nEdit with: python3 ~/openclaw-louter/scripts/louterctl.py routes ...`);
-        case 'status': return reply(`Louter ${VERSION}\nAgents: ${cfg.agentIds.join(', ')}\nAuto local deadline: ${cfg.auto.timeoutMs}ms\nAsk Around deadline: ${cfg.askAround.totalTimeoutMs}ms\nCloud completion API: ${typeof api.runtime?.llm?.complete === 'function' ? 'present (access tested on actual calls)' : 'missing'}\nPrefixes are current-message, text-only completions. Local privacy applies to Louter model requests, not the messaging channel or other OpenClaw plugins.`);
+        case 'status': return reply(`Louter ${VERSION}\nAgents: ${cfg.agentIds.join(', ')}\nAuto local deadline: ${cfg.auto.timeoutMs}ms\nAsk Around deadline: ${cfg.askAround.totalTimeoutMs}ms\nWorker completion API: ${typeof api.runtime?.subagent?.complete === 'function' ? 'present (access tested on actual calls)' : 'missing'}\nPrefixes are current-message, text-only completions. Local privacy applies to Louter model requests, not the messaging channel or other OpenClaw plugins.`);
         case 'savings': return reply(await savings(command.period));
         case 'details': return await details(ctx, command.alias, command.panelId, command.page);
         case 'unknown': return reply(`Unknown Louter route '${command.alias}'. No model was called. Use louter routes.`, true);

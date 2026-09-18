@@ -1,6 +1,6 @@
 {
   "id": "louter",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "name": "Louter \u2014 Lite Router",
   "description": "Keep simple replies local. Choose a model explicitly. Ask your configured models in parallel and retain their full answers.",
   "activation": {
@@ -70,6 +70,10 @@
                 "max",
                 "ultra"
               ]
+            },
+            "agentId": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$"
             }
           },
           "additionalProperties": false,

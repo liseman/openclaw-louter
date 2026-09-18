@@ -4,23 +4,11 @@
 
 Louter adds a small, text-only local reply path ahead of the normal OpenClaw agent. A local answer can finish the turn without sending the full agent prompt to a model. Harder automatic requests continue to your existing main agent. Explicit prefixes and an optional model panel give you direct control.
 
-**Version 0.2.0 is a complete runnable preview, not a claim of production certification.** It ships ordinary JavaScript, not a missing TypeScript build. It targets the OpenClaw 2026.9.4 interfaces used during development. The compatibility declaration records that target; it is not a claim that every supported host has passed live tests. Example cloud model names must be replaced with models available to your account.
+**Version 0.2.0 is a complete runnable preview, not a claim of production certification.** It ships ordinary JavaScript, not a missing TypeScript build. It targets the interfaces verified in this conversation on OpenClaw 2026.9.4. Model names below are the user's configured routes, not assertions about current public model availability.
 
-## Install
+## Install on luketinybox
 
-After the GitHub release is published, clone the source and run the installer on your Linux OpenClaw host as your normal OpenClaw user, without sudo:
-
-```bash
-git clone https://github.com/liseman/openclaw-louter.git
-cd openclaw-louter
-bash install.sh
-```
-
-After the ClawHub release passes registry review, the registry package is
-`@liseman/openclaw-louter`; the runtime plugin ID is `louter`.
-The source installer configures the conversation and model permissions as well
-as linking the plugin. Installing an archive alone does not provision models
-or replace that permission/configuration step.
+Run the supplied self-contained `install-louter.sh` on the Linux OpenClaw host, as `luke`, without sudo. Or unpack the source archive and run `bash install.sh`.
 
 The installer:
 
@@ -61,7 +49,7 @@ The same limitation applies to Ask Around: it is a text model panel, not three a
 
 All settings live at `plugins.entries.louter.config`. The configuration schema is in `openclaw.plugin.json`; `config.example.json` contains the complete initial configuration.
 
-Initial routes reproduce the development setup; review and change them for your account:
+Initial routes reproduce the confirmed setup:
 
 * `local` → loopback Qwen at `http://127.0.0.1:18080/v1/chat/completions`;
 * `astra` → `openai/gpt-6-astra`;
@@ -87,6 +75,10 @@ For a local Ollama route, use its native API so thinking and residency settings 
 python3 ~/openclaw-louter/scripts/louterctl.py routes add small qwen3.5:2b \
   --local-endpoint http://127.0.0.1:11434/api/chat --protocol ollama --context 4096
 ```
+
+### Cloud worker runtimes
+
+Louter uses `api.runtime.subagent.complete()` for configured cloud workers. The dedicated Claude worker keeps the canonical model ref `anthropic/claude-opus-5` and pins the model-scoped runtime to `claude-cli`; this lets the worker use Claude Code's own authenticated CLI backend rather than the direct Anthropic Messages transport. The gateway host must have the `claude` CLI installed, logged in, and visible on the gateway service PATH. Astra uses its configured OpenAI/Codex runtime.
 
 ## Ask Around: deadlines, failures and details
 
@@ -122,7 +114,7 @@ python3 ~/openclaw-louter/scripts/setup_local.py
 
 Setup first reuses the existing Qwen service. Otherwise, with an existing reachable Ollama installation, it offers a Qwen 3.5 model download after consent, using RAM only as a starting heuristic, then runs two tiny answer/latency tests. It applies a candidate only with `--apply`. It does not silently change the model or automatically increase your timeout. A failed candidate leaves current configuration unchanged.
 
-This preview provisions **models through an existing runtime**; it does not install Ollama, graphics drivers, OS services or binaries unattended. New machines without a runtime need one installed first or a supplied local endpoint. An existing compatible loopback service needs no new model download. A two-question smoke test does not certify general model quality or safety.
+This preview provisions **models through an existing runtime**; it does not install Ollama, graphics drivers, OS services or binaries unattended. New machines without a runtime need one installed first or a supplied local endpoint. Your luketinybox already has the service and needs no new model download. A two-question smoke test does not certify general model quality or safety.
 
 ## Tests and operations
 
@@ -141,7 +133,7 @@ The installer writes a targeted `rollback.py` path in its final summary. It does
 
 ## Verification status
 
-The delivered build is tested with mocked local/cloud transports, filesystem storage tests, and a real loopback HTTP redirect test. Its installer flow is exercised with simulated OpenClaw commands. This release has **not** passed a live OpenClaw 2026.9.4 integration run in the packaging environment. The installer/live smoke test is the remaining integration check; neither an earlier prototype's routing-only test nor a synthetic reply's base model label proves a new cloud route is working.
+The delivered build is tested with mocked local/cloud transports, filesystem storage tests, and a real loopback HTTP redirect test. Its installer flow is exercised with simulated OpenClaw commands. It has **not** been executed against Luke's live OpenClaw 2026.9.4 runtime by this assistant. The installer/live smoke test is the remaining integration check; neither an earlier prototype's routing-only test nor a synthetic reply's base model label proves a new cloud route is working.
 
 ## References
 
@@ -156,4 +148,4 @@ Verified primary sources used for the implementation:
 * https://ollama.com/library/qwen3.5:4b
 * https://docs.ollama.com/api/chat
 
-Installed-source snippets from the development host also establish `before_agent_reply`, `eligibleTriggers`, and `api.runtime.llm.complete` on the exact target installation. Public SDKs evolve; keep host-version smoke tests in the release process.
+The earlier installed-source snippets supplied by Luke also establish `before_agent_reply`, `eligibleTriggers`, and `api.runtime.llm.complete` on the exact target installation. Public SDKs evolve; keep host-version smoke tests in the release process.

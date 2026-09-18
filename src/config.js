@@ -1,11 +1,11 @@
 /** Louter configuration. No provider credentials are read here. */
-export const VERSION = '0.2.0';
+export const VERSION = '0.2.2';
 export const DEFAULTS = {
   agentIds: ['main'],
   routes: {
     local: { kind: 'local', model: 'qwen', endpoint: 'http://127.0.0.1:18080/v1/chat/completions', protocol: 'openai', contextTokens: 4096, timeoutMs: 30000, maxTokens: 384, enabled: true },
-    astra: { kind: 'openclaw', model: 'openai/gpt-6-astra', timeoutMs: 30000, maxTokens: 768, enabled: true },
-    claude: { kind: 'openclaw', model: 'anthropic/claude-opus-5', timeoutMs: 30000, maxTokens: 768, enabled: true }
+    astra: { kind: 'openclaw', model: 'openai/gpt-6-astra', agentId: 'louter-astra', timeoutMs: 30000, maxTokens: 768, enabled: true },
+    claude: { kind: 'openclaw', model: 'anthropic/claude-opus-5', agentId: 'louter-claude', timeoutMs: 30000, maxTokens: 768, enabled: true }
   },
   auto: { enabled: true, localRoute: 'local', timeoutMs: 5000, maxTokens: 128, maxInputChars: 600, extraKeywords: [] },
   askAround: { routes: ['local', 'astra', 'claude'], synthesizer: 'local', fallbackSynthesizer: 'astra', totalTimeoutMs: 45000, panelTimeoutMs: 20000, localPanelTimeoutMs: 12000, synthesisTimeoutMs: 10000, fallbackTimeoutMs: 12000, maxPanelTokens: 384, maxLocalPanelTokens: 96, maxSynthesisTokens: 320, maxQuestionChars: 12000, maxSynthesisChars: 24000 },
@@ -46,7 +46,10 @@ export function configFrom(input = {}) {
       r.contextTokens ??= 4096;
       if (!['openai', 'ollama'].includes(r.protocol)) throw new Error(`Unknown protocol for ${alias}`);
       if (!Number.isSafeInteger(r.contextTokens) || r.contextTokens < 512 || r.contextTokens > 262144) throw new Error(`Invalid contextTokens for ${alias}`);
-    } else if (!/^[^\s/]+\/\S+$/.test(r.model) || r.model.includes('@')) throw new Error(`Use a full provider/model ref without an auth-profile suffix for ${alias}`);
+    } else {
+      if (!/^[^\s/]+\/\S+$/.test(r.model) || r.model.includes('@')) throw new Error(`Use a full provider/model ref without an auth-profile suffix for ${alias}`);
+      if (r.agentId !== undefined && (typeof r.agentId !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(r.agentId))) throw new Error(`Invalid agentId for ${alias}`);
+    }
     if (!Number.isSafeInteger(r.timeoutMs) || r.timeoutMs < 10 || r.timeoutMs > 60000) throw new Error(`Invalid timeoutMs for ${alias}`);
     if (!Number.isSafeInteger(r.maxTokens) || r.maxTokens < 1 || r.maxTokens > 8192) throw new Error(`Invalid maxTokens for ${alias}`);
   }
