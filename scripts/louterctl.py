@@ -49,7 +49,7 @@ try:
     elif args.command=='timeout':cfg['auto']['timeoutMs']=round(args.seconds*1000)
     elif args.command=='fallback':
         cfg['fallback']['route']=args.route
-        if args.enabled is not None:cfg['fallback']['onRefusal']=args.enabled
+        if args.enabled is not None:cfg['fallback']['onCloudError']=args.enabled
     validate(cfg)
     entry=host_entry(cfg,old)
     allowed=entry['llm'].get('allowedCompletionModels',[])
