@@ -1,9 +1,9 @@
 /** Louter configuration. No provider credentials are read here. */
-export const VERSION = '0.2.7';
+export const VERSION = '0.2.8';
 export const DEFAULTS = {
   agentIds: ['main'],
   routes: {
-    local: { kind: 'local', model: 'qwen', endpoint: 'http://127.0.0.1:18080/v1/chat/completions', protocol: 'openai', contextTokens: 4096, timeoutMs: 30000, maxTokens: 384, enabled: true },
+    local: { kind: 'local', model: 'qwen', endpoint: 'http://localhost:18080/v1/chat/completions', protocol: 'openai', contextTokens: 4096, timeoutMs: 30000, maxTokens: 384, enabled: true },
     astra: { kind: 'openclaw', model: 'openai/gpt-6-astra', agentId: 'louter-astra', timeoutMs: 30000, maxTokens: 768, enabled: true },
     claude: { kind: 'openclaw', model: 'anthropic/claude-opus-5', agentId: 'louter-claude', timeoutMs: 30000, maxTokens: 768, enabled: true }
   },
