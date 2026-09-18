@@ -14,8 +14,8 @@ const scopedCalls = new AsyncLocalStorage();
 const emptyUsage = () => ({ inputTokens: 0, outputTokens: 0 });
 const isEscalation = s => /^\s*(?:`{1,3})?ESCALATE\b/i.test(s);
 const refusalTextPatterns = [
-  /^\s*(?:i(?:'m| am)\s+sorry[,—-]?\s*(?:but\s+)?)?i\s+(?:can't|cannot|won't)\s+(?:help|assist|provide|comply|give|walk you through)\b/i,
-  /^\s*(?:sorry[,—-]?\s*)?(?:but\s+)?i\s+(?:can't|cannot|won't)\s+(?:help|assist)\s+with\s+(?:that|this)\b/i,
+  /^\s*(?:i(?:'m| am)\s+sorry[,—-]?\s*(?:but\s+)?)?i\s+(?:can't|can’t|cannot|won't|won’t)\s+(?:help|assist|provide|comply|give|walk you through)\b/i,
+  /^\s*(?:sorry[,—-]?\s*)?(?:but\s+)?i\s+(?:can't|can’t|cannot|won't|won’t)\s+(?:help|assist)\s+with\s+(?:that|this)\b/i,
   /^\s*i(?:'m| am)\s+unable\s+to\s+(?:help|assist|provide)\b/i,
   /^\s*i\s+must\s+decline\b/i
 ];
@@ -186,7 +186,7 @@ export function createRouter(api, options = {}) {
             signal
           }));
           outcome.actualModel = r.model;
-          return { ...j, stopReason: 'stop' };
+          return { ...j, stopReason: j?.stopReason || 'stop' };
         }
 
         // Compatibility path for explicitly configured routes without agentId.
@@ -318,6 +318,7 @@ export function createRouter(api, options = {}) {
         // reuse that answer instead of making a duplicate local request. This
         // preserves attribution and avoids local-server contention.
         for (const refused of panel.answers.filter(r => r.refused)) {
+          if (!cfg.fallback.onRefusal) continue;
           const shared = panel.answers.find(r => r.route === cfg.fallback.route && r.status === 'ok');
           if (shared) {
             refused.fallback = { ...shared, sharedPanelAnswer: true };
@@ -392,6 +393,7 @@ export function createRouter(api, options = {}) {
           if (hasMedia(ctx)) return reply('Explicit Louter routes are text-only. Paste the needed text; attached media was not sent to a model.', true);
           const result = await complete(command.alias, command.prompt, ANSWER_SYSTEM, ctx);
           if (result.refused && r.kind === 'openclaw') {
+            if (!cfg.fallback.onRefusal) return reply(`${command.alias} declined this request. Local refusal fallback is disabled.`, true);
             const fallback = await refusalFallback(command.alias, command.prompt, result, ctx);
             if (fallback?.status === 'ok') {
               return reply(`Fallback notice: ${command.alias} declined this request, so Louter retried the original request using the local route '${cfg.fallback.route}'. The answer below is from your local model.\n\n${fallback.text}`);
