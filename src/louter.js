@@ -13,6 +13,20 @@ const escape = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const scopedCalls = new AsyncLocalStorage();
 const emptyUsage = () => ({ inputTokens: 0, outputTokens: 0 });
 const isEscalation = s => /^\s*(?:`{1,3})?ESCALATE\b/i.test(s);
+const refusalTextPatterns = [
+  /^\s*(?:i(?:'m| am)\s+sorry[,—-]?\s*(?:but\s+)?)?i\s+(?:can't|cannot|won't)\s+(?:help|assist|provide|comply|give|walk you through)\b/i,
+  /^\s*(?:sorry[,—-]?\s*)?(?:but\s+)?i\s+(?:can't|cannot|won't)\s+(?:help|assist)\s+with\s+(?:that|this)\b/i,
+  /^\s*i(?:'m| am)\s+unable\s+to\s+(?:help|assist|provide)\b/i,
+  /^\s*i\s+must\s+decline\b/i
+];
+export function refusalReason(result) {
+  const stop = String(result?.stopReason ?? result?.finishReason ?? result?.finish_reason ?? '').toLowerCase();
+  if (['refusal', 'content_filter', 'safety', 'blocked'].includes(stop)) return `stop:${stop}`;
+  if (result?.refused === true || result?.refusal === true) return 'structured-refusal';
+  if (typeof result?.refusal === 'string' && result.refusal.trim()) return 'structured-refusal';
+  const text = String(result?.text ?? '').trim();
+  return refusalTextPatterns.some(p => p.test(text)) ? 'text-refusal' : '';
+}
 
 export function parseCommand(text, cfg) {
   const body = String(text ?? '').trim();
@@ -129,7 +143,7 @@ export function createRouter(api, options = {}) {
     const ms = Math.max(1, Math.min(limits.timeoutMs ?? r?.timeoutMs ?? 30000, 60000));
     const maxTokens = limits.maxTokens ?? r?.maxTokens ?? 384;
     const started = Date.now();
-    const outcome = { route: alias, model: r?.model || '', status: 'error', latencyMs: 0, text: '', error: '', usage: emptyUsage() };
+    const outcome = { route: alias, model: r?.model || '', status: 'error', latencyMs: 0, text: '', error: '', refused: false, refusalReason: '', usage: emptyUsage() };
     if (!r || !r.enabled || stopped) { outcome.error = 'route_unavailable'; return outcome; }
     const purpose = limits.purpose || 'route';
     const cloud = r.kind === 'openclaw';
@@ -192,12 +206,21 @@ export function createRouter(api, options = {}) {
         }
         return j;
       }, ms, limits.signal, active);
-      if (typeof result?.text !== 'string' || !result.text.trim()) { outcome.error = 'empty_response'; return outcome; }
       outcome.usage = usageOf(result);
-      if (Buffer.byteLength(result.text) > 200000) { outcome.error = 'oversized_response'; return outcome; }
-      outcome.text = result.text.trim();
-      outcome.status = /^(length|max_tokens|token_limit)$/.test(String(result.stopReason || '')) ? 'partial' : 'ok';
-      if (outcome.status === 'partial') outcome.error = 'output_truncated';
+      const refusal = refusalReason(result);
+      if (refusal) {
+        outcome.refused = true;
+        outcome.refusalReason = refusal;
+        outcome.error = 'refused';
+        outcome.status = 'refused';
+        outcome.text = typeof result?.text === 'string' ? result.text.trim() : '';
+      } else {
+        if (typeof result?.text !== 'string' || !result.text.trim()) { outcome.error = 'empty_response'; return outcome; }
+        if (Buffer.byteLength(result.text) > 200000) { outcome.error = 'oversized_response'; return outcome; }
+        outcome.text = result.text.trim();
+        outcome.status = /^(length|max_tokens|token_limit)$/.test(String(result.stopReason || '')) ? 'partial' : 'ok';
+        if (outcome.status === 'partial') outcome.error = 'output_truncated';
+      }
     } catch (e) { outcome.error = e instanceof DeadlineError ? 'timeout' : codeOf(e); }
     finally {
       outcome.latencyMs = Date.now() - started;
@@ -211,7 +234,30 @@ export function createRouter(api, options = {}) {
     return outcome;
   }
   const reply = (text, isError = false) => ({ handled: true, reply: { text, ...(isError ? { isError: true } : {}) } });
-  const routeError = (alias, result) => `${alias}: no complete answer (${result.error || 'unavailable'}). ${cfg.routes[alias]?.kind === 'local' ? 'Louter did not call a cloud model for this request.' : 'No other model was substituted.'}`;
+  const routeError = (alias, result) => result?.refused
+    ? `${alias}: the selected cloud model declined this request. No fallback answer was available.`
+    : `${alias}: no complete answer (${result.error || 'unavailable'}). ${cfg.routes[alias]?.kind === 'local' ? 'Louter did not call a cloud model for this request.' : 'No other model was substituted.'}`;
+  async function refusalFallback(alias, prompt, result, ctx, options = {}) {
+    const route = cfg.routes[alias];
+    if (!result?.refused || route?.kind !== 'openclaw' || !cfg.fallback.onRefusal) return null;
+    const fallbackAlias = cfg.fallback.route;
+    const fallbackRoute = cfg.routes[fallbackAlias];
+    if (!fallbackRoute?.enabled || fallbackRoute.kind !== 'local') return null;
+    const fallback = await complete(fallbackAlias, prompt, ANSWER_SYSTEM, ctx, {
+      timeoutMs: Math.min(fallbackRoute.timeoutMs || 30000, options.timeoutMs || fallbackRoute.timeoutMs || 30000),
+      maxTokens: fallbackRoute.maxTokens,
+      purpose: 'refusal-fallback',
+      signal: options.signal
+    });
+    await record(ctx, {
+      event: 'refusal_fallback',
+      refusedRoute: alias,
+      fallbackRoute: fallbackAlias,
+      status: fallback.status,
+      refusalReason: result.refusalReason || 'refused'
+    }, { refusalFallbacks: 1, refusalFallbackSuccesses: fallback.status === 'ok' ? 1 : 0 });
+    return fallback;
+  }
   async function details(ctx, alias, panelId, page = 1) {
     const scope = scopeKey(ctx);
     if (!scope) return reply('Details are unavailable without a conversation identity.', true);
@@ -219,7 +265,7 @@ export function createRouter(api, options = {}) {
     if (!p) return reply('No retained Ask Around run in this conversation. Run ask around: first.', true);
     const rows = alias === 'all' ? p.answers : p.answers.filter(a => a.route === alias);
     if (!rows.length) return reply(`No ${alias} response in this panel. Available: ${p.answers.map(a => a.route).join(', ')}.`, true);
-    const text = rows.map(a => `=== ${a.route} | ${a.actualModel || a.model} | ${a.status} | ${(a.latencyMs / 1000).toFixed(2)}s ===\n${a.text || `No response: ${a.error}`}\n${a.status === 'partial' ? '[The provider output was truncated.]' : ''}`).join('\n\n');
+    const text = rows.map(a => `=== ${a.route} | ${a.actualModel || a.model} | ${a.status} | ${(a.latencyMs / 1000).toFixed(2)}s ===\n${a.text || `No response: ${a.error}`}\n${a.status === 'partial' ? '[The provider output was truncated.]' : ''}${a.fallback ? `\n\n--- Local fallback for ${a.route} (${a.fallback.route}, ${a.fallback.status}) ---\n${a.fallback.text || `No response: ${a.fallback.error}`}` : ''}`).join('\n\n');
     const pages = Math.max(1, Math.ceil(text.length / cfg.storage.detailsPageChars));
     if (!Number.isSafeInteger(page) || page < 1 || page > pages) return reply(`Page must be between 1 and ${pages}.`, true);
     return reply(`Ask Around ${p.id} — page ${page}/${pages}\n\n${text.slice((page - 1) * cfg.storage.detailsPageChars, page * cfg.storage.detailsPageChars)}${page < pages ? `\n\nNext: details ${alias} ${p.id} --page ${page + 1}` : ''}`);
@@ -264,16 +310,28 @@ export function createRouter(api, options = {}) {
           const answer = await complete(name, command.prompt, ANSWER_SYSTEM, ctx, {
             timeoutMs: budget(local ? a.localPanelTimeoutMs : a.panelTimeoutMs), maxTokens: local ? a.maxLocalPanelTokens : a.maxPanelTokens, purpose: 'panel', signal
           });
+          if (answer.refused) {
+            const fallback = await refusalFallback(name, command.prompt, answer, ctx, {
+              timeoutMs: budget(a.localPanelTimeoutMs), signal
+            });
+            if (fallback) answer.fallback = fallback;
+          }
           panel.answers.push(answer);
         });
         await Promise.allSettled(jobs);
         panel.answers.sort((x, y) => names.indexOf(x.route) - names.indexOf(y.route));
         await store.savePanel(scope, panel);
         const good = panel.answers.filter(r => r.status === 'ok');
-        if (!good.length) { panel.synthesis = 'No complete panel answers. Any partial output is retained in details all.'; return; }
-        if (good.length === 1) { panel.synthesis = `Only ${good[0].route} completed; this is not a multi-model synthesis.\n\n${good[0].text}`; panel.synthesisRoute = 'single-answer'; return; }
-        if (good.every(r => r.text === good[0].text)) { panel.synthesis = good[0].text + '\n\nAll completed responses were identical. Agreement does not verify correctness.'; panel.synthesisRoute = 'identical-responses'; return; }
-        const source = JSON.stringify({ question: command.prompt, responses: good.map(r => ({ alias: r.route, text: r.text })) });
+        const synthesisAnswers = [...good];
+        for (const refused of panel.answers.filter(r => r.refused && r.fallback?.status === 'ok')) {
+          if (!synthesisAnswers.some(r => r.route === refused.fallback.route)) {
+            synthesisAnswers.push({ ...refused.fallback, route: `${refused.fallback.route} (fallback for ${refused.route})` });
+          }
+        }
+        if (!synthesisAnswers.length) { panel.synthesis = 'No complete panel answers. Any partial or refused output is retained in details all.'; return; }
+        if (synthesisAnswers.length === 1) { panel.synthesis = `Only ${synthesisAnswers[0].route} completed; this is not a multi-model synthesis.\n\n${synthesisAnswers[0].text}`; panel.synthesisRoute = 'single-answer'; return; }
+        if (synthesisAnswers.every(r => r.text === synthesisAnswers[0].text)) { panel.synthesis = synthesisAnswers[0].text + '\n\nAll completed responses were identical. Agreement does not verify correctness.'; panel.synthesisRoute = 'identical-responses'; return; }
+        const source = JSON.stringify({ question: command.prompt, responses: synthesisAnswers.map(r => ({ alias: r.route, text: r.text })) });
         if (source.length > a.maxSynthesisChars) { panel.synthesis = 'Responses saved, but too long for the configured synthesis budget. Use details all; no responses were silently shortened.'; return; }
         const first = await complete(a.synthesizer, source, SYNTH_SYSTEM, ctx, { timeoutMs: budget(a.synthesisTimeoutMs), maxTokens: a.maxSynthesisTokens, purpose: 'synthesis', signal });
         if (first.status === 'ok' && !isEscalation(first.text)) { panel.synthesis = first.text; panel.synthesisRoute = a.synthesizer; return; }
@@ -287,7 +345,7 @@ export function createRouter(api, options = {}) {
     } catch (e) { panel.status = 'partial'; panel.synthesis ||= `Ask Around stopped (${codeOf(e)}). Completed responses are retained; use details all.`; }
     await store.savePanel(scope, panel);
     await record(ctx, { event: 'panel_end', panelId: panel.id, status: panel.status, completed: panel.answers.filter(x => x.status === 'ok').map(x => x.route), synthesisRoute: panel.synthesisRoute });
-    const namesLine = panel.answers.map(r => `${r.route}=${r.status} (${(r.latencyMs / 1000).toFixed(1)}s)`).join(' | ');
+    const namesLine = panel.answers.map(r => `${r.route}=${r.status}${r.refused && r.fallback ? `→${r.fallback.route}-fallback-${r.fallback.status}` : ''} (${(r.latencyMs / 1000).toFixed(1)}s)`).join(' | ');
     const full = `Ask Around ${panel.id}\n\n${panel.synthesis}\n\nPanel: ${namesLine}\nSynthesis: ${panel.synthesisRoute || 'not completed'}\nText-only panel; no browsing, account access or tools.\nFull responses: details ${names[0]} | details all`;
     if (command.details) {
       const detail = await details(ctx, command.details, panel.id);
@@ -317,6 +375,13 @@ export function createRouter(api, options = {}) {
           if (!command.prompt) return reply(`Usage: ${command.alias}: <request>`, true);
           if (hasMedia(ctx)) return reply('Explicit Louter routes are text-only. Paste the needed text; attached media was not sent to a model.', true);
           const result = await complete(command.alias, command.prompt, ANSWER_SYSTEM, ctx);
+          if (result.refused && r.kind === 'openclaw') {
+            const fallback = await refusalFallback(command.alias, command.prompt, result, ctx);
+            if (fallback?.status === 'ok') {
+              return reply(`Fallback notice: ${command.alias} declined this request, so Louter retried the original request using the local route '${cfg.fallback.route}'. The answer below is from your local model.\n\n${fallback.text}`);
+            }
+            return reply(`${command.alias} declined this request. Louter attempted the configured local fallback '${cfg.fallback.route}', but it did not complete${fallback?.error ? ` (${fallback.error})` : ''}.`, true);
+          }
           if (result.status !== 'ok') return reply(routeError(command.alias, result) + (result.text ? '\n\nPartial response:\n' + result.text : ''), true);
           if (r.kind === 'local') await record(ctx, { event: 'route', outcome: 'LOCAL', alias: command.alias }, { forcedLocal: 1, avoidedInputEstimate: cfg.estimates.inputTokensPerAvoidedTurn, avoidedOutputEstimate: cfg.estimates.outputTokensPerAvoidedTurn });
           return reply(result.text);
