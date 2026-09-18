@@ -73,6 +73,14 @@ def main():
         print(f'  {alias}: {r["model"]} [{present}; {auth}{worker}]')
     if a.show:
         print('\nConfiguration: UNCHANGED');return 0
+    if not local['qwen-loopback'] and local['ollama'] and not a.yes:
+        print('\nOllama is available but no Louter local model is configured.')
+        if input('Choose/download a verified Qwen model now? [y/N] ').strip().lower()=='y':
+            rc=subprocess.run([sys.executable,str(ROOT/'scripts/setup_local.py'),'--yes','--apply']).returncode
+            if rc:raise RuntimeError('Local model setup failed.')
+            old=get_config('plugins.entries.louter',{})
+            cfg=copy.deepcopy(normalized(old.get('config') or defaults()))
+            catalog,status,local=discover(log)
     if not local['qwen-loopback'] and not local['ollama']:
         print('\nNo supported local runtime is ready. Install/start Ollama or provide a loopback endpoint with scripts/setup_local.py.')
     if not a.yes:
