@@ -1,0 +1,44 @@
+name: Release 0.2.7
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: ${{ github.repository == 'liseman/openclaw-louter' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify release version
+        id: version
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          test "$VERSION" = "0.2.7"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Create tag and GitHub release if missing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "$TAG already released"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+            git tag -a "$TAG" -m "Louter $VERSION"
+            git push origin "$TAG"
+          fi
+          gh release create "$TAG"             --title "Louter $VERSION — Lite Router for OpenClaw"             --prerelease             --notes "Friendlier first-run setup and model discovery; ClawHub provenance-preserving installation; disclosed local fallback for configured cloud execution failures; cloud content refusals remain unchanged and are never bypassed. CI passed JavaScript, Python syntax, and installer tests."
