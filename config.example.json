@@ -67,7 +67,13 @@
     "outputUsdPerMillion": null
   },
   "fallback": {
-    "onRefusal": true,
-    "route": "local"
+    "onCloudError": true,
+    "route": "local",
+    "errors": [
+      "timeout",
+      "request_failed",
+      "output-rejected",
+      "empty_response"
+    ]
   }
 }
