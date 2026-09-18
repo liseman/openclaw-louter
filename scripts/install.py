@@ -67,6 +67,14 @@ def main():
         inspect=run(['openclaw','plugins','inspect','louter'],log=log)
         if 'Status: enabled' not in inspect:raise RuntimeError('Louter did not report enabled after installation.')
         summary.append(('PASS','Plugin registration','enabled with explicit LLM authorization'))
+        # Friendly first-run route/model discovery. This never installs a runtime;
+        # with an existing Ollama it can offer a verified Qwen download interactively.
+        setup_cmd=[sys.executable,str(ROOT/'scripts/setup.py')]
+        if a.yes: setup_cmd.append('--yes')
+        print('\nLouter route/model setup follows:',flush=True)
+        rc=subprocess.run(setup_cmd).returncode
+        if rc:raise RuntimeError(f'Louter route/model setup failed (exit {rc}).')
+        summary.append(('PASS','Route setup','local/cloud routes discovered and configured'))
         # Only now disable the earlier proof of concept; preserve files and settings.
         for plugin in ['fastpath-test','mode-switcher']:
             old=get_config('plugins.entries.'+plugin,None,log)
