@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.7 — 2026-09-18
+
+- Add disclosed local fallback when an explicit cloud route clearly refuses a request.
+- Prefer structured refusal metadata; conservatively recognize common explicit text refusals.
+- Do not treat timeouts, authentication failures, outages or ordinary errors as refusals.
+- Preserve refusal provenance in Ask Around and label local fallback separately; reuse the panel's local answer when available.
+- Add configurable `fallback.onRefusal` and `fallback.route` plus `louterctl fallback` controls.
+- Add a friend-friendly first-run setup wizard that detects local/cloud availability, lets users change aliases/models, and can provision verified Qwen models through an existing Ollama installation.
+- Run the route/model discovery wizard from the installer and document a one-paste ClawHub install/setup command.
+
 ## 0.2.0 — 2026-09-17
 
 Complete JavaScript package replacing interrupted experimental installer blocks.
