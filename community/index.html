@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'none'; object-src 'none'; base-uri 'none'">
+<title>Louter · Community savings</title>
+<style>
+:root{color-scheme:light dark;font-family:system-ui,sans-serif;--bg:#f4f6f9;--fg:#172636;--muted:#526577;--card:#fff;--line:#dce4ec;--accent:#075d58}
+@media(prefers-color-scheme:dark){:root{--bg:#111a23;--fg:#edf5fc;--muted:#acbdcc;--card:#1a2733;--line:#354453;--accent:#7adde0}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg)}main{max-width:1040px;margin:auto;padding:50px 24px}header{margin-bottom:32px}.eyebrow{text-transform:uppercase;letter-spacing:.18em;font-size:.75rem;font-weight:700;color:var(--accent)}h1{font-size:clamp(2rem,5vw,3.8rem);letter-spacing:-.05em;line-height:1.05;margin:16px 0}p{max-width:76ch;line-height:1.6;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px}.card,section{padding:24px;background:var(--card);border:1px solid var(--line);border-radius:14px}.label{font-size:.9rem;color:var(--muted)}.value{font-size:2.25rem;font-weight:730;letter-spacing:-.04em;margin-top:12px}section{margin-top:24px}h2{font-size:1.3rem}a{color:var(--accent)}label{display:inline-block;margin:12px 18px 12px 0;font-size:.88rem}input{display:block;margin-top:8px;width:170px;font:inherit;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}code{font-size:.9em}.note{font-size:.85rem}footer{padding-top:24px;font-size:.85rem}#error{color:#b14120}
+</style>
+</head>
+<body><main>
+<header><div class="eyebrow">Louter / opt-in community statistics</div><h1>Less cloud.<br>Measured locally.</h1>
+<p>Public, self-reported aggregate usage from participating installations. Token savings are counterfactual estimates—not independently verified reductions in cloud bills.</p><p id="updated" class="note">Loading published totals…</p><p id="error" role="alert"></p></header>
+<div class="grid">
+<div class="card"><div class="label">Participating installations</div><div class="value" id="installs">—</div></div>
+<div class="card"><div class="label">Locally completed direct turns</div><div class="value" id="local">—</div></div>
+<div class="card"><div class="label">Estimated input tokens avoided</div><div class="value" id="input">—</div></div>
+<div class="card"><div class="label">Estimated output tokens avoided</div><div class="value" id="output">—</div></div>
+</div>
+<section><h2>What would that be worth at your API prices?</h2><p>No prices are assumed. Enter USD per million tokens to calculate a gross API-equivalent estimate. These inputs stay in your browser and are not transmitted.</p>
+<label>Input · USD / million tokens<input id="inputPrice" type="number" min="0" step="0.01" placeholder="Not configured"></label>
+<label>Output · USD / million tokens<input id="outputPrice" type="number" min="0" step="0.01" placeholder="Not configured"></label>
+<div class="value" id="dollars">Prices not configured</div><p class="note">Not net savings: excludes paid cloud/panel calls, cached tokens, local electricity and subscription billing. Different installations can use different token assumptions.</p></section>
+<section><h2>Public and auditable—not anonymous</h2><p>Every accepted report comes from a public GitHub issue and is linked to its author. Louter sends counters, a random installation ID, a reporting date and its version. It does not send prompts, responses, session identifiers, model names, local paths or provider credentials.</p><p>Retries replace the latest cumulative snapshot rather than adding it again. Closing or withdrawing a report excludes it from the next rebuild; prior GitHub history and copies may remain. Self-reported totals can be inaccurate or manipulated.</p>
+<p id="extra"></p><p><a href="README.md">Full methodology</a> · <a href="totals.json">Totals JSON</a> · <a href="reports.json">Accepted report snapshots</a></p></section>
+<footer><a href="https://github.com/liseman/openclaw-louter/blob/main/community/README.md">Opt-in instructions and privacy</a> · No analytics, cookies, external fonts or third-party scripts.</footer>
+</main>
+<script>
+'use strict';let totals=null;const el=id=>document.getElementById(id);const fmt=n=>new Intl.NumberFormat().format(n);
+function estimate(){const a=el('inputPrice').value,b=el('outputPrice').value;const i=Number(a),o=Number(b);if(!totals||a===''||b===''||!Number.isFinite(i)||!Number.isFinite(o)||i<0||o<0){el('dollars').textContent='Prices not configured';return}const amount=(totals.estimated_input_tokens_avoided*i+totals.estimated_output_tokens_avoided*o)/1e6;el('dollars').textContent=Number.isFinite(amount)?new Intl.NumberFormat(undefined,{style:'currency',currency:'USD'}).format(amount):'Price is too large'}
+for(const id of ['inputPrice','outputPrice'])el(id).addEventListener('input',estimate);
+fetch('totals.json',{credentials:'omit'}).then(r=>{if(!r.ok)throw new Error('Totals unavailable');return r.json()}).then(d=>{if(d.schema!==1)throw new Error('Unsupported totals format');totals=d.totals;el('installs').textContent=fmt(d.participating_installations);el('local').textContent=fmt(totals.local_answers);el('input').textContent=fmt(totals.estimated_input_tokens_avoided);el('output').textContent=fmt(totals.estimated_output_tokens_avoided);el('updated').textContent='Updated '+d.updated;el('extra').textContent=fmt(totals.cloud_attempts)+' cloud attempts · '+fmt(totals.ask_around_runs)+' Ask Around runs · '+fmt(totals.local_fallback_answers)+' local failure-fallback answers. These do not inflate avoided-turn totals.';estimate()}).catch(()=>{el('error').textContent='Could not load published totals. View the community-stats branch on GitHub; a failed refresh never becomes a zero-savings claim.';el('updated').textContent='No data loaded'});
+</script></body></html>

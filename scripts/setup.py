@@ -111,6 +111,17 @@ def main():
     print('Try: local: hello')
     print('Try: ask around: compare two approaches')
     print('Logs:',d)
+    # Separate, explicit consent. --yes for installation NEVER opts into telemetry.
+    print('\nOptional public savings reports: OFF unless separately enabled.')
+    print('Reports reveal your GitHub username. No prompts or answers are sent.')
+    print('Review anytime: python3 scripts/louterctl.py telemetry preview')
+    if not a.yes and sys.stdin.isatty():
+        try:
+            if input('Review the public-reporting opt-in now? [y/N] ').strip().lower()=='y':
+                rc=subprocess.run([sys.executable,'-B',str(ROOT/'scripts/telemetry.py'),'on']).returncode
+                if rc:print('Telemetry setup did not complete; Louter routing setup is unaffected.')
+        except (EOFError,KeyboardInterrupt):
+            print('\nTelemetry unchanged; routing setup completed.')
     return 0
 
 if __name__=='__main__':

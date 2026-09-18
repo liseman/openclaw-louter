@@ -1,44 +1,64 @@
-name: Release 0.2.8
-
+name: Release
 on:
   push:
-    branches:
-      - main
-
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'openclaw.plugin.json'
+      - '.github/workflows/release-0.2.7.yml'
 permissions:
   contents: write
-
+concurrency:
+  group: louter-release
+  cancel-in-progress: false
 jobs:
   release:
-    if: ${{ github.repository == 'liseman/openclaw-louter' }}
+    if: github.repository == 'liseman/openclaw-louter'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
-      - name: Verify release version
-        id: version
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Gate the exact release tree
         run: |
-          VERSION="$(node -p "require('./package.json').version")"
-          test "$VERSION" = "0.2.8"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-      - name: Create tag and GitHub release if missing
+          npm test
+          python3 -B test/installer_test.py
+          python3 -B test/telemetry_test.py
+          node --input-type=module -e 'import fs from "node:fs"; import {VERSION} from "./src/config.js"; const p=JSON.parse(fs.readFileSync("package.json")); const m=JSON.parse(fs.readFileSync("openclaw.plugin.json")); if(p.version!==VERSION || p.version!==m.version) process.exit(1);'
+      - name: Build and inspect artifact
+        run: |
+          TGZ="$(npm pack --silent | tail -1)"
+          tar -tzf "$TGZ" > "$RUNNER_TEMP/package-files.txt"
+          if grep -E '__pycache__|\.py[co]$|\.bak$|\.pre-' "$RUNNER_TEMP/package-files.txt"; then exit 1; fi
+          echo "LOUTER_TGZ=$TGZ" >> "$GITHUB_ENV"
+      - name: Publish stable GitHub release if missing
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
         run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           TAG="v$VERSION"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "$TAG already released"
+            echo "$TAG already released; leaving it unchanged"
             exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
-            git tag -a "$TAG" -m "Louter $VERSION"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            test "$(git rev-list -n 1 "$TAG")" = "$GITHUB_SHA"
+          else
+            git tag -a "$TAG" "$GITHUB_SHA" -m "Louter $VERSION"
             git push origin "$TAG"
           fi
-          gh release create "$TAG"             --title "Louter $VERSION — Lite Router for OpenClaw"             --latest             --notes "Friendlier first-run setup and model discovery; ClawHub provenance-preserving installation; disclosed local fallback for configured cloud execution failures; cloud content refusals remain unchanged and are never bypassed. CI passed JavaScript, Python syntax, and installer tests."
+          gh release create "$TAG" "$LOUTER_TGZ" --verify-tag --latest \
+            --title "Louter $VERSION — Lite Router for OpenClaw" \
+            --notes-file community/RELEASE_NOTES.md

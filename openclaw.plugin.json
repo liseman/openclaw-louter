@@ -1,86 +1,31 @@
 {
   "id": "louter",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "name": "Louter — Lite Router",
   "description": "Keep simple replies local. Choose a model explicitly. Ask your configured models in parallel and retain their full answers.",
-  "activation": {
-    "onStartup": true
-  },
+  "activation": {"onStartup": true},
   "configSchema": {
     "type": "object",
     "properties": {
-      "agentIds": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "minItems": 1
-      },
+      "agentIds": {"type": "array", "items": {"type": "string"}, "minItems": 1},
       "routes": {
         "type": "object",
         "additionalProperties": {
           "type": "object",
           "properties": {
-            "kind": {
-              "enum": [
-                "local",
-                "openclaw"
-              ]
-            },
-            "model": {
-              "type": "string",
-              "minLength": 1
-            },
-            "enabled": {
-              "type": "boolean"
-            },
-            "endpoint": {
-              "type": "string"
-            },
-            "protocol": {
-              "enum": [
-                "openai",
-                "ollama"
-              ]
-            },
-            "contextTokens": {
-              "type": "integer",
-              "minimum": 512,
-              "maximum": 262144
-            },
-            "timeoutMs": {
-              "type": "integer",
-              "minimum": 10,
-              "maximum": 60000
-            },
-            "maxTokens": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 8192
-            },
-            "reasoning": {
-              "enum": [
-                "off",
-                "minimal",
-                "low",
-                "medium",
-                "high",
-                "xhigh",
-                "adaptive",
-                "max",
-                "ultra"
-              ]
-            },
-            "agentId": {
-              "type": "string",
-              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$"
-            }
+            "kind": {"enum": ["local", "openclaw"]},
+            "model": {"type": "string", "minLength": 1},
+            "enabled": {"type": "boolean"},
+            "endpoint": {"type": "string"},
+            "protocol": {"enum": ["openai", "ollama"]},
+            "contextTokens": {"type": "integer", "minimum": 512, "maximum": 262144},
+            "timeoutMs": {"type": "integer", "minimum": 10, "maximum": 60000},
+            "maxTokens": {"type": "integer", "minimum": 1, "maximum": 8192},
+            "reasoning": {"enum": ["off", "minimal", "low", "medium", "high", "xhigh", "adaptive", "max", "ultra"]},
+            "agentId": {"type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$"}
           },
           "additionalProperties": false,
-          "required": [
-            "kind",
-            "model"
-          ]
+          "required": ["kind", "model"]
         },
         "minProperties": 1,
         "maxProperties": 12
@@ -88,182 +33,59 @@
       "auto": {
         "type": "object",
         "properties": {
-          "enabled": {
-            "type": "boolean"
-          },
-          "localRoute": {
-            "type": "string"
-          },
-          "timeoutMs": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 60000
-          },
-          "maxTokens": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 8192
-          },
-          "maxInputChars": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 60000
-          },
-          "extraKeywords": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
+          "enabled": {"type": "boolean"},
+          "localRoute": {"type": "string"},
+          "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 60000},
+          "maxTokens": {"type": "integer", "minimum": 1, "maximum": 8192},
+          "maxInputChars": {"type": "integer", "minimum": 1, "maximum": 60000},
+          "extraKeywords": {"type": "array", "items": {"type": "string"}}
         },
         "additionalProperties": false
       },
       "askAround": {
         "type": "object",
         "properties": {
-          "routes": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "minItems": 1,
-            "maxItems": 8,
-            "uniqueItems": true
-          },
-          "synthesizer": {
-            "type": "string"
-          },
-          "fallbackSynthesizer": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "totalTimeoutMs": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 60000
-          },
-          "panelTimeoutMs": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 60000
-          },
-          "localPanelTimeoutMs": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 60000
-          },
-          "synthesisTimeoutMs": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 60000
-          },
-          "fallbackTimeoutMs": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 60000
-          },
-          "maxPanelTokens": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 60000
-          },
-          "maxLocalPanelTokens": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 60000
-          },
-          "maxSynthesisTokens": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 60000
-          },
-          "maxQuestionChars": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 60000
-          },
-          "maxSynthesisChars": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 60000
-          }
+          "routes": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 8, "uniqueItems": true},
+          "synthesizer": {"type": "string"},
+          "fallbackSynthesizer": {"type": ["string", "null"]},
+          "totalTimeoutMs": {"type": "integer", "minimum": 1, "maximum": 60000},
+          "panelTimeoutMs": {"type": "integer", "minimum": 1, "maximum": 60000},
+          "localPanelTimeoutMs": {"type": "integer", "minimum": 1, "maximum": 60000},
+          "synthesisTimeoutMs": {"type": "integer", "minimum": 1, "maximum": 60000},
+          "fallbackTimeoutMs": {"type": "integer", "minimum": 1, "maximum": 60000},
+          "maxPanelTokens": {"type": "integer", "minimum": 1, "maximum": 60000},
+          "maxLocalPanelTokens": {"type": "integer", "minimum": 1, "maximum": 60000},
+          "maxSynthesisTokens": {"type": "integer", "minimum": 1, "maximum": 60000},
+          "maxQuestionChars": {"type": "integer", "minimum": 1, "maximum": 60000},
+          "maxSynthesisChars": {"type": "integer", "minimum": 1, "maximum": 60000}
         },
         "additionalProperties": false
       },
       "storage": {
         "type": "object",
         "properties": {
-          "retentionDays": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 50000
-          },
-          "maxPanelsPerSession": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 50000
-          },
-          "detailsPageChars": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 50000
-          }
+          "retentionDays": {"type": "integer", "minimum": 1, "maximum": 50000},
+          "maxPanelsPerSession": {"type": "integer", "minimum": 1, "maximum": 50000},
+          "detailsPageChars": {"type": "integer", "minimum": 1, "maximum": 50000}
         },
         "additionalProperties": false
       },
       "estimates": {
         "type": "object",
         "properties": {
-          "inputTokensPerAvoidedTurn": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "minimum": 0
-          },
-          "outputTokensPerAvoidedTurn": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "minimum": 0
-          },
-          "inputUsdPerMillion": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "minimum": 0
-          },
-          "outputUsdPerMillion": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "minimum": 0
-          }
+          "inputTokensPerAvoidedTurn": {"type": ["number", "null"], "minimum": 0},
+          "outputTokensPerAvoidedTurn": {"type": ["number", "null"], "minimum": 0},
+          "inputUsdPerMillion": {"type": ["number", "null"], "minimum": 0},
+          "outputUsdPerMillion": {"type": ["number", "null"], "minimum": 0}
         },
         "additionalProperties": false
       },
       "fallback": {
         "type": "object",
         "properties": {
-          "onCloudError": {
-            "type": "boolean"
-          },
-          "route": {
-            "type": "string"
-          },
-          "errors": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "minItems": 1,
-            "uniqueItems": true
-          }
+          "onCloudError": {"type": "boolean"},
+          "route": {"type": "string"},
+          "errors": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true}
         },
         "additionalProperties": false
       }
