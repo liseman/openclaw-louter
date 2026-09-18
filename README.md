@@ -4,14 +4,14 @@
 
 Louter adds a small, text-only local reply path ahead of the normal OpenClaw agent. A local answer can finish the turn without sending the full agent prompt to a model. Harder automatic requests continue to your existing main agent. Explicit prefixes and an optional model panel give you direct control.
 
-**Version 0.2.7 is a preview release built on the live-tested 0.2.x routing architecture.** It ships ordinary JavaScript, not a missing TypeScript build. It targets the interfaces verified in this conversation on OpenClaw 2026.9.4. Model names below are the user's configured routes, not assertions about current public model availability.
+**Version 0.2.8 is a preview release built on the live-tested 0.2.x routing architecture.** It ships ordinary JavaScript, not a missing TypeScript build. It targets the interfaces verified in this conversation on OpenClaw 2026.9.4. Model names below are the user's configured routes, not assertions about current public model availability.
 
 ## Install
 
 For a normal default-profile install, friends can paste one command:
 
 ```bash
-openclaw plugins install 'clawhub:@liseman/openclaw-louter@0.2.7' --accept-capabilities && ~/.openclaw/extensions/louter/install.sh
+openclaw plugins install 'clawhub:@liseman/openclaw-louter@0.2.8' --accept-capabilities && ~/.openclaw/extensions/louter/install.sh
 ```
 
 The installer runs offline checks, asks for Louter's conversation/model permissions, discovers the current local/cloud setup, lets the user keep or change route aliases/models, reuses an existing loopback Qwen server, and can offer a verified Qwen download when Ollama is already installed. It does **not** silently install an OS-level runtime, graphics driver, or sudo package.
