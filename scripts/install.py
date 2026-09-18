@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import sys as _louter_sys
+_louter_sys.dont_write_bytecode = True
 
 def package_version():
     root = Path(__file__).resolve().parent.parent
