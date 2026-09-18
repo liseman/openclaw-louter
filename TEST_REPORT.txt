@@ -1,0 +1,18 @@
+Louter 0.2.0 — release verification
+
+Node.js v22.16.0, Python 3.13.5, Linux packaging environment.
+
+PASS: 28 automated Node tests, 0 failures.
+PASS: simulated new installation, permissions and preserved main configuration.
+PASS: simulated installer rollback on failed diagnostics.
+PASS: publisher simulations for success, pending registry review, and refusal
+to overwrite an existing repository with different history. No network writes
+occurred in those publisher simulations.
+
+These tests use mocked cloud transports. This release has not been run against
+a live OpenClaw host or actual Astra/Claude accounts in this environment.
+ClawHub static validation and registry publication must run on the publisher's
+authenticated machine; the publishing script performs those checks.
+
+The release contains JavaScript runtime entry files and explicit ClawHub
+compatibility/build-target metadata. No production certification is claimed.

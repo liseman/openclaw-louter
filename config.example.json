@@ -1,0 +1,69 @@
+{
+  "agentIds": [
+    "main"
+  ],
+  "routes": {
+    "local": {
+      "kind": "local",
+      "model": "qwen",
+      "endpoint": "http://127.0.0.1:18080/v1/chat/completions",
+      "protocol": "openai",
+      "contextTokens": 4096,
+      "timeoutMs": 30000,
+      "maxTokens": 384,
+      "enabled": true
+    },
+    "astra": {
+      "kind": "openclaw",
+      "model": "openai/gpt-6-astra",
+      "timeoutMs": 30000,
+      "maxTokens": 768,
+      "enabled": true
+    },
+    "claude": {
+      "kind": "openclaw",
+      "model": "anthropic/claude-opus-5",
+      "timeoutMs": 30000,
+      "maxTokens": 768,
+      "enabled": true
+    }
+  },
+  "auto": {
+    "enabled": true,
+    "localRoute": "local",
+    "timeoutMs": 5000,
+    "maxTokens": 128,
+    "maxInputChars": 600,
+    "extraKeywords": []
+  },
+  "askAround": {
+    "routes": [
+      "local",
+      "astra",
+      "claude"
+    ],
+    "synthesizer": "local",
+    "fallbackSynthesizer": "astra",
+    "totalTimeoutMs": 45000,
+    "panelTimeoutMs": 20000,
+    "localPanelTimeoutMs": 12000,
+    "synthesisTimeoutMs": 10000,
+    "fallbackTimeoutMs": 12000,
+    "maxPanelTokens": 384,
+    "maxLocalPanelTokens": 96,
+    "maxSynthesisTokens": 320,
+    "maxQuestionChars": 12000,
+    "maxSynthesisChars": 24000
+  },
+  "storage": {
+    "retentionDays": 7,
+    "maxPanelsPerSession": 10,
+    "detailsPageChars": 10000
+  },
+  "estimates": {
+    "inputTokensPerAvoidedTurn": 15000,
+    "outputTokensPerAvoidedTurn": 150,
+    "inputUsdPerMillion": null,
+    "outputUsdPerMillion": null
+  }
+}

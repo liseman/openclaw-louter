@@ -1,0 +1,10 @@
+node_modules/
+__pycache__/
+*.pyc
+*.log
+*.tgz
+.DS_Store
+.env
+.env.*
+.publish/
+.louter-source-sha256

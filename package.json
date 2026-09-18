@@ -1,0 +1,60 @@
+{
+  "name": "@liseman/openclaw-louter",
+  "version": "0.2.0",
+  "description": "Keep simple replies local. Choose a model explicitly. Ask your configured models in parallel and retain their full answers.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.js"
+    ],
+    "compat": {
+      "pluginApi": ">=2026.9.4 <2027.0.0",
+      "minGatewayVersion": "2026.9.4"
+    },
+    "build": {
+      "openclawVersion": "2026.9.4"
+    }
+  },
+  "files": [
+    "index.js",
+    "src/*.js",
+    "scripts/*.py",
+    "test/*.js",
+    "test/*.py",
+    "openclaw.plugin.json",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "config.example.json",
+    "install.sh",
+    "SECURITY.md",
+    "RELEASE_NOTES.md",
+    "TEST_REPORT.txt",
+    "PUBLISHING.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:smoke": "python3 scripts/smoke.py",
+    "setup": "python3 scripts/setup_local.py"
+  },
+  "keywords": [
+    "openclaw",
+    "local-llm",
+    "routing",
+    "model-council",
+    "privacy"
+  ],
+  "author": "liseman",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liseman/openclaw-louter.git"
+  },
+  "homepage": "https://github.com/liseman/openclaw-louter#readme",
+  "bugs": {
+    "url": "https://github.com/liseman/openclaw-louter/issues"
+  }
+}
