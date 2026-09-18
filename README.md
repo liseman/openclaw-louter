@@ -4,24 +4,28 @@
 
 Louter adds a small, text-only local reply path ahead of the normal OpenClaw agent. A local answer can finish the turn without sending the full agent prompt to a model. Harder automatic requests continue to your existing main agent. Explicit prefixes and an optional model panel give you direct control.
 
-**Version 0.2.0 is a complete runnable preview, not a claim of production certification.** It ships ordinary JavaScript, not a missing TypeScript build. It targets the interfaces verified in this conversation on OpenClaw 2026.9.4. Model names below are the user's configured routes, not assertions about current public model availability.
+**Version 0.2.7 is a preview release built on the live-tested 0.2.x routing architecture.** It ships ordinary JavaScript, not a missing TypeScript build. It targets the interfaces verified in this conversation on OpenClaw 2026.9.4. Model names below are the user's configured routes, not assertions about current public model availability.
 
-## Install on luketinybox
+## Install
 
-Run the supplied self-contained `install-louter.sh` on the Linux OpenClaw host, as `luke`, without sudo. Or unpack the source archive and run `bash install.sh`.
+For a normal default-profile install, friends can paste one command:
 
-The installer:
+```bash
+openclaw plugins install 'clawhub:@liseman/openclaw-louter@0.2.7' --accept-capabilities && ~/.openclaw/extensions/louter/install.sh
+```
 
-* runs offline tests before changing registration;
-* backs up existing Louter source and the config fields it changes;
-* links `~/openclaw-louter`, enables its conversation hook, and authorizes only its configured cloud targets;
-* disables `fastpath-test` and `mode-switcher` only after Louter is registered;
-* preserves main-model selection, provider credentials, Qwen's systemd service and previous source;
-* restarts with a bounded wait, never force-kills running work, then runs quiet live smoke tests.
+The installer runs offline checks, asks for Louter's conversation/model permissions, discovers the current local/cloud setup, lets the user keep or change route aliases/models, reuses an existing loopback Qwen server, and can offer a verified Qwen download when Ollama is already installed. It does **not** silently install an OS-level runtime, graphics driver, or sudo package.
 
-OpenClaw capability prompts remain visible. Routine logs go into a private diagnostic directory. Failed tests are not declared successful just because a routing log appeared. The live tests verify turn completion, expected text and route/model receipts where available.
+To rerun just the friend-friendly setup wizard later:
 
-`bash install-louter.sh --skip-smoke` skips paid/live model calls. `--no-restart` also skips live tests. `--yes` explicitly approves the permissions described by the installer; it is not needed for ordinary use.
+```bash
+cd ~/.openclaw/extensions/louter
+python3 scripts/setup.py
+```
+
+For automation, `install.sh --yes` keeps the current/suggested route names and models and skips interactive approval prompts; it does not silently download a local model.
+
+Routine logs go into a private diagnostic directory. Failed tests are not declared successful just because a routing log appeared.
 
 ## Messages
 
@@ -30,8 +34,8 @@ OpenClaw capability prompts remain visible. Routine logs go into a private diagn
 | `What is a hexagon?` | Automatic local attempt, then main-agent fallback when needed. |
 | `Research the latest …` | Bypasses local inference and continues to the normal main agent. |
 | `local: Explain this sentence: …` | Local text completion only. Error/timeout does **not** ask a cloud model. |
-| `astra: Compare these two arguments: …` | One isolated completion from the configured `astra` model. |
-| `claude: Review this paragraph: …` | One isolated completion from the configured `claude` model. |
+| `astra: Compare these two arguments: …` | One tool-free worker completion from the configured `astra` model. If the cloud model declines and refusal fallback is enabled, the original request is retried locally with a visible fallback notice. |
+| `claude: Review this paragraph: …` | One tool-free worker completion from the configured `claude` model, with the same disclosed local-refusal fallback behavior. |
 | `ask around: Which approach is better, and why?` | Configured panel in parallel, local-first synthesis, optional configured synthesis fallback. |
 | `ask around --details claude: …` | Synthesis plus Claude's stored original response. |
 | `details claude` / `details all` | Full saved responses from the latest panel **in this conversation**, without a new model call. |
@@ -41,7 +45,7 @@ OpenClaw capability prompts remain visible. Routine logs go into a private diagn
 
 ### Explicit cloud routes are not full tool-capable agents
 
-`astra:` and `claude:` deliberately use `api.runtime.llm.complete` with `isolated-agent-runtime`. Each receives the prefix-stripped **current text only** and no conversation history or model-callable tools. That avoids recursive routing and accidental agent actions. For browsing, files, account access, or continuing your normal conversation, use an **unprefixed** message; your normal main agent retains its configured capabilities.
+Configured cloud workers use `api.runtime.subagent.complete()`. Each receives the prefix-stripped **current text only** and no conversation history or model-callable tools. That avoids recursive routing and accidental agent actions. Custom routes without a worker can still use the compatibility completion path. For browsing, files, account access, or continuing your normal conversation, use an **unprefixed** message; your normal main agent retains its configured capabilities.
 
 The same limitation applies to Ask Around: it is a text model panel, not three agents browsing or executing commands. Paste necessary evidence into the question. Independent answers are not independent verification. Model agreement is not a confidence score.
 
@@ -57,14 +61,14 @@ Initial routes reproduce the confirmed setup:
 
 Only the named agents in `agentIds` are intercepted; initially that is `main`.
 
-Terminal administration does not require editing JavaScript:
+Terminal administration does not require editing JavaScript. Run these from the installed package directory:
 
-```bash
-python3 ~/openclaw-louter/scripts/louterctl.py routes list
-python3 ~/openclaw-louter/scripts/louterctl.py routes add reviewer anthropic/claude-opus-5
-python3 ~/openclaw-louter/scripts/louterctl.py panel local astra reviewer
-python3 ~/openclaw-louter/scripts/louterctl.py synthesizer local --fallback astra
-python3 ~/openclaw-louter/scripts/louterctl.py timeout 5
+```bashbash
+python3 scripts/louterctl.py routes list
+python3 scripts/louterctl.py routes add reviewer anthropic/claude-opus-5
+python3 scripts/louterctl.py panel local astra reviewer
+python3 scripts/louterctl.py synthesizer local --fallback astra
+python3 scripts/louterctl.py timeout 5
 ```
 
 `routes add` also changes an existing alias. It updates Louter's **exact** host model-permission list after confirmation, not the user's global model policy. A route still needs working provider authentication and permission in the selected agent's policy. A disabled route remains visible but is never invoked. Up to eight explicitly selected panel aliases may participate; the entire OpenClaw catalog is never fanned out automatically.
@@ -79,6 +83,22 @@ python3 ~/openclaw-louter/scripts/louterctl.py routes add small qwen3.5:2b \
 ### Cloud worker runtimes
 
 Louter uses `api.runtime.subagent.complete()` for configured cloud workers. The dedicated Claude worker keeps the canonical model ref `anthropic/claude-opus-5` and pins the model-scoped runtime to `claude-cli`; this lets the worker use Claude Code's own authenticated CLI backend rather than the direct Anthropic Messages transport. The gateway host must have the `claude` CLI installed, logged in, and visible on the gateway service PATH. Astra uses its configured OpenAI/Codex runtime.
+
+
+### Refusal fallback
+
+By default, an **explicit cloud route** that clearly declines the request can retry the **original, unmodified request** on the configured local route. Louter always tells the user that this happened; it never presents the local answer as if it came from the selected cloud model.
+
+Structured refusal metadata is preferred when OpenClaw exposes it. A conservative text detector catches common explicit declines such as “I can’t help with that request.” Timeouts, authentication failures, outages, empty responses, and ordinary errors are **not** treated as refusals and do not trigger this fallback.
+
+For Ask Around, the refusing cloud model remains recorded as refused. If the configured local route is already in the panel, Louter reuses that local answer as a separately labeled fallback instead of making a duplicate request. The local fallback is not counted as the refusing model's vote.
+
+Configure it from the installed package:
+
+```bash
+python3 scripts/louterctl.py fallback --on --route local
+python3 scripts/louterctl.py fallback --off
+```
 
 ## Ask Around: deadlines, failures and details
 
@@ -109,7 +129,7 @@ Supply your own verified prices, for example by running `louterctl.py prices INP
 ## Local model setup
 
 ```bash
-python3 ~/openclaw-louter/scripts/setup_local.py
+python3 scripts/setup_local.py
 ```
 
 Setup first reuses the existing Qwen service. Otherwise, with an existing reachable Ollama installation, it offers a Qwen 3.5 model download after consent, using RAM only as a starting heuristic, then runs two tiny answer/latency tests. It applies a candidate only with `--apply`. It does not silently change the model or automatically increase your timeout. A failed candidate leaves current configuration unchanged.
@@ -133,7 +153,7 @@ The installer writes a targeted `rollback.py` path in its final summary. It does
 
 ## Verification status
 
-The delivered build is tested with mocked local/cloud transports, filesystem storage tests, and a real loopback HTTP redirect test. Its installer flow is exercised with simulated OpenClaw commands. It has **not** been executed against Luke's live OpenClaw 2026.9.4 runtime by this assistant. The installer/live smoke test is the remaining integration check; neither an earlier prototype's routing-only test nor a synthetic reply's base model label proves a new cloud route is working.
+The 0.2.x routing architecture has passed the project's offline tests and live smoke/integration checks on OpenClaw 2026.9.4, including local Qwen, Astra, Claude, Ask Around, Details, main-agent handoff and Savings. 0.2.7 adds refusal fallback and first-run model discovery; run the bundled tests and smoke test after upgrading.
 
 ## References
 
