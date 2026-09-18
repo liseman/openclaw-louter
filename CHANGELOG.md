@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.11 — 2026-09-18
+
+- Prevent packaged Python entry points from writing import bytecode after extraction.
+- Run the shell installer with `PYTHONDONTWRITEBYTECODE=1` and Python `-B`.
+- Set `sys.dont_write_bytecode` before sibling imports in packaged Python entry points.
+- Add a release regression test that extracts the actual npm artifact, exercises entry points, and rejects any generated `__pycache__`, `.pyc`, or `.pyo`.
+- Addresses the concrete ClawHub 0.2.10 scan finding for `scripts/__pycache__/common.cpython-314.pyc`.
+
 ## 0.2.10 — 2026-09-18
 
 - Roll the post-0.2.9 GitHub Pages deployment and editable reference-price dashboard into a new immutable release.
