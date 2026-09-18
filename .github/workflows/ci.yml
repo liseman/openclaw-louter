@@ -21,3 +21,16 @@ jobs:
         run: python -m py_compile scripts/*.py
       - name: Installer tests
         run: python test/installer_test.py
+      - name: Package artifact audit
+        run: |
+          TGZ="$(npm pack --silent | tail -1)"
+          tar -tzf "$TGZ" > /tmp/package-files.txt
+          if grep -E '__pycache__|\.py[co]$|\.bak$|\.pre-' /tmp/package-files.txt; then
+            echo "Forbidden generated/development file in npm package"
+            exit 1
+          fi
+          tar -xOf "$TGZ" package/config.example.json > /tmp/config.example.json
+          if grep -E '"endpoint"[[:space:]]*:[[:space:]]*"http://127\.0\.0\.1:' /tmp/config.example.json; then
+            echo "Raw-IP example endpoint would trigger ClawHub install-source scanner"
+            exit 1
+          fi
