@@ -1,6 +1,6 @@
 {
   "name": "@liseman/openclaw-louter",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "description": "Keep simple replies local. Choose a model explicitly. Ask your configured models in parallel and retain their full answers.",
   "type": "module",
   "license": "MIT",
@@ -40,7 +40,8 @@
     "telemetry": "python3 -B scripts/telemetry.py",
     "setup": "python3 scripts/setup_local.py",
     "setup:quick": "python3 scripts/setup.py",
-    "prepack": "python3 scripts/clean_package.py"
+    "prepack": "python3 scripts/clean_package.py",
+    "test:bytecode": "python3 -B test/no_bytecode_test.py"
   },
   "keywords": [
     "openclaw",
