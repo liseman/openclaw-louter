@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import sys as _louter_sys
+_louter_sys.dont_write_bytecode = True
 """Terminal-only route administration. Never exposes mutation commands to chat."""
 import argparse, copy, json, sys
 
