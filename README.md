@@ -2,16 +2,16 @@
 
 **Opt-in, public, self-reported statistics. Not verified reductions in cloud bills.**
 
-Updated: 2026-09-20T06:40:23+00:00
+Updated: 2026-09-20T07:28:14+00:00
 
 | Metric | Total |
 |---|---:|
 | Participating installations | 2 |
 | Reports updated within 30 days | 2 |
-| Locally completed direct turns | 9 |
-| Estimated input tokens avoided | 135,000 |
-| Estimated output tokens avoided | 1,350 |
-| Main-agent handoffs | 2 |
+| Locally completed direct turns | 11 |
+| Estimated input tokens avoided | 165,000 |
+| Estimated output tokens avoided | 1,650 |
+| Main-agent handoffs | 36 |
 | Cloud calls attempted / completed | 34 / 17 |
 | Ask Around runs | 7 |
 | Local answers after cloud failures | 0 |
