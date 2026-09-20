@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "updated": "2026-09-19T23:23:25+00:00",
+  "updated": "2026-09-20T01:07:29+00:00",
   "repository": "liseman/openclaw-louter",
-  "participating_installations": 1,
-  "reports_updated_within_30_days": 1,
+  "participating_installations": 2,
+  "reports_updated_within_30_days": 2,
   "excluded_installations": 0,
   "rejected_reports": 0,
   "totals": {

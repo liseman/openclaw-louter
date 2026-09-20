@@ -2,12 +2,12 @@
 
 **Opt-in, public, self-reported statistics. Not verified reductions in cloud bills.**
 
-Updated: 2026-09-19T23:23:25+00:00
+Updated: 2026-09-20T01:07:29+00:00
 
 | Metric | Total |
 |---|---:|
-| Participating installations | 1 |
-| Reports updated within 30 days | 1 |
+| Participating installations | 2 |
+| Reports updated within 30 days | 2 |
 | Locally completed direct turns | 9 |
 | Estimated input tokens avoided | 135,000 |
 | Estimated output tokens avoided | 1,350 |
