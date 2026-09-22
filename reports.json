@@ -4,18 +4,18 @@
     "install_id": "23d0b684-2c57-4f81-b0cb-c9460dd23bba",
     "louter_version": "0.2.11",
     "schema": 1,
-    "sequence": 2,
+    "sequence": 3,
     "totals": {
       "ask_around_runs": 7,
       "cloud_attempts": 34,
       "cloud_completions": 17,
-      "estimated_input_tokens_avoided": 165000,
-      "estimated_output_tokens_avoided": 1650,
-      "local_answers": 11,
+      "estimated_input_tokens_avoided": 315000,
+      "estimated_output_tokens_avoided": 3150,
+      "local_answers": 21,
       "local_fallback_answers": 0,
-      "main_agent_handoffs": 36
+      "main_agent_handoffs": 131
     },
-    "updated": "2026-09-20",
+    "updated": "2026-09-22",
     "withdrawn": false
   },
   {
