@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "2026-09-24T07:33:23+00:00",
+  "updated": "2026-09-24T08:37:41+00:00",
   "repository": "liseman/openclaw-louter",
   "participating_installations": 2,
   "reports_updated_within_30_days": 2,
@@ -10,7 +10,7 @@
     "local_answers": 21,
     "estimated_input_tokens_avoided": 315000,
     "estimated_output_tokens_avoided": 3150,
-    "main_agent_handoffs": 131,
+    "main_agent_handoffs": 143,
     "cloud_attempts": 34,
     "cloud_completions": 17,
     "ask_around_runs": 7,
