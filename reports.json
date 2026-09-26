@@ -4,7 +4,7 @@
     "install_id": "23d0b684-2c57-4f81-b0cb-c9460dd23bba",
     "louter_version": "0.2.11",
     "schema": 1,
-    "sequence": 5,
+    "sequence": 6,
     "totals": {
       "ask_around_runs": 7,
       "cloud_attempts": 34,
@@ -15,7 +15,7 @@
       "local_fallback_answers": 0,
       "main_agent_handoffs": 143
     },
-    "updated": "2026-09-24",
+    "updated": "2026-09-26",
     "withdrawn": false
   },
   {
