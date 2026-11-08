@@ -2,7 +2,7 @@
 
 **Opt-in, public, self-reported statistics. Not verified reductions in cloud bills.**
 
-Updated: 2026-11-08T13:21:38+00:00
+Updated: 2026-11-08T14:21:43+00:00
 
 | Metric | Total |
 |---|---:|
